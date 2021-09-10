@@ -14,6 +14,17 @@ The sample demo is made of 3 files (look at demo/script.txt)
 LDOS comes with pre-assembled binaries. ( ldos/bin ). But if you want to modify & build yourself, just run ldos/src/build.cmd
 
 ## LDOS Technical details
+Each of your demo FX should include LDOS header
+```c
+      include "../../ldos/kernel.inc"
+```
+Each LDOS function is called using JSR. For instance, if you want to pre-load the next FX from floppy disk, just do:
+```c
+			move.l  (LDOS_BASE).w,a6
+			jsr LDOS_PRELOAD_NEXT_FX(a6)
+```
+You can open ldos/kernel.inc to see all LDOS functions
+
 * LDOS should run on any Amiga ( from A500 to 060 )
 * LDOS is primary made for A500 demo. If ran on higger amiga, CPU caches are switched off
 * Generated demo is 1MiB RAM targeted ( with at least 512KiB of chip memory )
@@ -31,22 +42,22 @@ LDOS comes with pre-assembled binaries. ( ldos/bin ). But if you want to modify 
 ## Amiga demos using LDOS
 LDOS is production ready :) Several Amiga demos are already powered by LDOS:
 
-### The Fall by The Deadliners & Lemon.
+### The Fall by The Deadliners & Lemon. (1st place at Revision 2018, Amiga compo)
 https://www.pouet.net/prod.php?which=75773
 
 ![The Fall](https://content.pouet.net/files/screenshots/00075/00075773.png)
 
-### De Profundis by The Deadliners & Lemon. & Oxygene
+### De Profundis by The Deadliners & Lemon. & Oxygene (2nd place at Revision 2019, Amiga compo)
 https://www.pouet.net/prod.php?which=81081
 
 ![De Profundis](https://content.pouet.net/files/screenshots/00081/00081081.jpg)
 
-### AmigAtari by Oxygene
+### AmigAtari by Oxygene (3rd place at Revision 2020, Wild compo)
 https://www.pouet.net/prod.php?which=85276
 
 ![AmigAtari](https://content.pouet.net/files/screenshots/00085/00085276.png)
 
-### Mel O Dee by Resistance
+### Mel O Dee by Resistance (2nd place at Xenium 2021, Wild compo)
 https://www.pouet.net/prod.php?which=89698
 
 ![Mel O Dee](https://content.pouet.net/files/screenshots/00089/00089698.jpg)
