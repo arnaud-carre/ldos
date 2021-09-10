@@ -8,7 +8,7 @@ LDOS repository also comes with a demo sample so you can see how to use LDOS in 
 The sample demo is made of 3 files (look at demo/script.txt)
 1. parcade.p61 ( p61 music file )
 2. Sprite loader: few animated sprites during the loading & depacking of the second part
-3. Greetings: large bitmap scroll
+3. Greetings: large bitmap scroll (fun fact: this part is a conversion of Greetings part of Atari ["We Were @" demo](https://www.pouet.net/prod.php?which=66702) )
 
 ## Building LDOS
 LDOS comes with pre-assembled binaries. ( ldos/bin ). But if you want to modify & build yourself, just run ldos/src/build.cmd
