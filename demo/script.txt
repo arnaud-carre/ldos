@@ -1,0 +1,3 @@
+parcade.p61
+sprites_loader/sprite.bin
+greetings/greetings.bin
