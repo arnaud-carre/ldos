@@ -35,7 +35,7 @@ You can open ldos/kernel.inc to see all LDOS functions
 
 ## Credits
 
-* LDOS is written by Arnaud Carré (aka Leonard/Oxygene)
+* LDOS is written by Arnaud Carré aka Leonard/Oxygene ( [@leonard_coder](https://twitter.com/leonard_coder) )
 * ARJ depackers by Mr Ni! / TOS-crew
 * P61 music player by Photon/Scoopex
 
