@@ -3,6 +3,8 @@
 ## Introduction
 LDOS is a framework to easily build Amiga multi-part demos. You can chain several amiga executable effects. LDOS is managing memory allocation, floppy disk loading, data depacking and image disk creation. LDOS also includes an HDD loader to run your demo from harddisk. LDOS toolchain is running on Windows platform.
 
+[Please like on your lovely Pouet website :)](https://www.pouet.net/prod.php?which=89822)
+
 ## Demo sample
 LDOS repository also comes with a demo sample so you can see how to use LDOS in real life application. Just run demo/build.cmd to build the sample LDOS demo. It will produce "ldos_demo.adf" file. You can use it in any Amiga emulator or write on real floppy and test on real hardware.
 The sample demo is made of 3 files (look at demo/script.txt)
