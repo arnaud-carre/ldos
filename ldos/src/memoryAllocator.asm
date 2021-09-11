@@ -60,8 +60,10 @@ batchAllocator:
 			andi.l	#MEM_SIZE_MASK,d0
 			btst	#LDOS_MEM_CLEAR_BIT,d1
 			beq.s	.noClear
+			pea		(a0)
 			move.l	(a2),a0
 			bsr		fastClear
+			move.l	(a7)+,a0
 .noClear:	move.l	(a2),-4(a0)				; path with allocated address
 			add.l	d0,(a2)
 			bra.s	.patchLoop
