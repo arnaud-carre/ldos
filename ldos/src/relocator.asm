@@ -204,8 +204,6 @@ relocError:
 			
 ; AMIGA Module relocation
 ; split data between music score data ( any ram ) and samples data (CHIP)
-		IF USE_P61
-		{
 relocP61:
 		; first, switch off module and free
 			lea		bMusicPlay(pc),a0
@@ -251,9 +249,6 @@ relocP61:
 			bsr		musicPlayer+16			; music set volume			
 			
 			rts
-		}
-			
-			
 			
 	IF	_DEBUG
 	{

@@ -1169,14 +1169,7 @@ kernelCrcEnd:
 	; Module Player
 	;-------------------------------------------------------------------				
 musicPlayer:
-		IF USE_P61
-		{
 		incbin	"p61player.bin"
-		}
-		ELSE
-		{
-		include "lplayer.asm"
-		}
 		
 
 crcProceedInfo:

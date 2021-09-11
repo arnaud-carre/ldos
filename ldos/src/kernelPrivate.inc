@@ -10,10 +10,8 @@
 ;---------------------------------------------------------
 
 
-USE_P61					=	1
 _DEBUG					=	1
 		
-
 MEMLABEL_SYSTEM			=	$7f
 MEMLABEL_TRACKLOAD		=	$7e
 MEMLABEL_PRECACHED_FX	=	$7d

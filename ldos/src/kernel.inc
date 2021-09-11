@@ -9,7 +9,9 @@
 ;
 ;---------------------------------------------------------
 
-LDOS_BASE				=	$4
+LDOS_BASE					=	$4
+LDOS_MUSIC_PLAYER_ENABLED	=	1
+
 
 ; Pre-load & depack the next FX. Once the current FX end (using RTS) the next one
 ; is executed immediatly.

@@ -131,6 +131,13 @@ suppF01	=P61pl	;if 1, split4=1 may cause sound errors. but try it anyway. :)
 
 	endc
 
+	ifeq	LDOS_MUSIC_PLAYER_ENABLED
+	
+		rept	6
+			nop
+		endr
+		
+	else
 
 	bra.w	pr_init
 	bra.w	P61_End				; 4
@@ -180,3 +187,5 @@ pr_replay:
 	
 	
 	include "P6110-Play.i"
+
+	endc
