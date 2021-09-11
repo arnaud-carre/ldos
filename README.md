@@ -13,7 +13,7 @@ The sample demo is made of 3 files (look at demo/script.txt)
 ## Building LDOS
 LDOS comes with pre-assembled binaries. ( ldos/bin ). But if you want to modify & build yourself, just run ldos/src/build.cmd
 
-## LDOS Technical details
+## How to use LDOS
 Each of your demo FX should include LDOS header
 ```c
       include "../../ldos/kernel.inc"
@@ -25,12 +25,17 @@ Each LDOS function is called using JSR. For instance, if you want to pre-load th
 ```
 You can open ldos/kernel.inc to see all LDOS functions
 
+Each demo part should be a standard Amiga executable.
+
+## LDOS Technical details
 * LDOS should run on any Amiga ( from A500 to 060 )
 * LDOS is primary made for A500 demo. If ran on higger amiga, CPU caches are switched off
 * Generated demo is 1MiB RAM targeted ( with at least 512KiB of chip memory )
 * Use ARJ mode 7 packer
 * LDOS is loading & depacking at the same time. Most of demos are loading, then depacking. LDOS depacks while loading, so basically depacking time is free.
 * Just put all the exe of your demo in a script.txt and run ldos/bin/install ( look at demo/build.cmd script )
+* All files are automatically packed using Arj7, you don't have to worry about packing
+* LDOS also provides a fast LZ4 depacker function (LDOS_FAST_DEPACK) in case you want to depack some data yourself at runtime during a demo part
 * fun fact: All data on the disk is packed except the bootsector. As boot code is pretty small, the rest of 1024 bytes bootblock is also used to store disk data
 
 ## Credits
