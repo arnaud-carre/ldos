@@ -1,0 +1,3 @@
+
+LDOS 1.02
+	- first public release
