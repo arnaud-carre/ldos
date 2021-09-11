@@ -347,3 +347,8 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+
+demo/greetings/*.bin
+demo/sprites_loader/*.bin
+demo/*.adf
+
