@@ -829,19 +829,14 @@ ispSet:		move.l	(a7)+,a6		; return ad
 			
 			
 		
-vectorSet:	
-;			move.w	#$7fff,$dff096
-;			move.w	#$7fff,$dff09a
-;			move.w	#$7fff,$dff09c
-			
-			move.l	(a7)+,a6		; return ad
-
+vectorSet:				
 			; set both user & supervisor stack
 			lea		.supervisor(pc),a0
 			move.l	a0,$80.w
 			trap	#0
-.supervisor:
+			rts			
 
+.supervisor:
 		; Set all suspicious interrupts to RTE intruction
 			move.w	#$2700,sr				; disable any 68k interrupt		
 			lea		unRTE(pc),a1
@@ -850,9 +845,6 @@ vectorSet:
 			cmpa.l	#$f0,a0
 			bne.s	.fill
 			
-		; back to user land
-			move.w	#0,sr					; back to user mode
-
 			moveq	#($30-$8)/4-1,d0
 			lea		guruBootStrap(pc),a0
 			lea		$8.w,a1
@@ -861,8 +853,7 @@ vectorSet:
 			dbf		d0,.set
 			lea		assertVector(pc),a0
 			move.l	a0,$80.w
-			
-			jmp		(a6)				; rts
+			rte					; back to user land
 
 			
 pollVSync:	btst	#0,$dff005
