@@ -156,17 +156,12 @@ entry:
 		move.l	pUserStack(pc),a7					; set user stack
 		bsr		ispSet								; bug fixed! Set ISP before relocating kernel
 
-		move.l	pKernelBase(pc),a1		
-		pea		(a1)
 		lea		kernelStart(pc),a0
+		move.l	pKernelBase(pc),a1		
 		move.w	#(kernelEnd-kernelStart),d0
 		add.w	fatSize(pc),d0
-		lsr.w	#1,d0
-		subq.w	#1,d0
-copy:	move.w	(a0)+,(a1)+
-		dbf		d0,copy
-		
-		rts						; jump to kernel base relocated
+		bsr		fastMemcpy		
+		jmp		(a1)						; jump to kernel base relocated
 
 align128:
 		move.l	(a0),d0					; start
@@ -240,23 +235,14 @@ mainDemoLoop:
 
 kernelLibrary:
 			bra.w	userLoadNextFile
-			bra.w	vSync
-			bra.w	installVBlank
-			bra.w	batchAllocator
-			bra.w	installCopperList
-			bra.w	lz4_frame_depack
-			bra.w	getFrameCounter
 			bra.w	assertVector
 			bra.w	musicStart
-			bra.w	musicPlayer+12			; music get info
+			bra.w	musicGetTick			; music get info
 			bra.w	musicStop				; music stop (with fade out)
 			bra.w	isDisk2Inserted
 			bra.w	persistentAlloc
 			bra.w	persistentGet
 			bra.w	persistentTrash
-			bra.w	cia50HzInstall
-			bra.w	freeMemoryArea
-			bra.w	musicPlayer+20			; music set position
 			bra.w	loadBinaryBlob
 			bra.w	getEntropy
 			bra.w	trackLoaderTick
@@ -303,17 +289,6 @@ runLoadedFile:
 		; WARNING: Both memory array overlap! But destination always lower ad than source
 			moveq	#MEMLABEL_PRECACHED_FX,d0
 			bsr		unmarkMemLabel
-
-		; first of all, maybe a MUSIC is already loaded, so reloc it
-			move.l	(nextMusic+m_ad)(pc),d0
-			beq.s	.noMusic
-			
-			bsr		relocP61
-
-			lea		nextMusic(pc),a0
-			clr.l	m_ad(a0)
-
-.noMusic:				
 
 		; from here, the memory used for the cached file is marked as "FREE"
 		; all next "alloc" will return pointers "lower", but may overlap.
@@ -397,39 +372,19 @@ installCopperList:
 			rts
 		
 musicStop:
-			move.l	#64<<8,d1
-			lea		fadeOutValue(pc),a0
-			move.w	d1,(a0)
-			tst.w	d0
-			beq.s	.imm
-			divu.w	d0,d1
-.imm:		lea		fadeOutStep(pc),a0
-			move.w	d1,(a0)
+	illegal
 			rts
 	
 
 musicStart:
 			move.l	pModule(pc),d0
 			beq.s	.skip
+			lea		musicTick(pc),a0
+			clr.l	(a0)
 			lea		bMusicPlay(pc),a0
 			move.w	#-1,(a0)
 .skip:		rts
-			
-		
-getFrameCounter:
-			bsr		checkCustomVbl
-			move.w	(SVAR_VBL_COUNT).w,d0
-			rts
-		
-vSync:		
-			bsr		checkCustomVbl
-			move.w	d0,-(a7)
-			move.w	(SVAR_VBL_COUNT).w,d0
-.sync:		cmp.w	(SVAR_VBL_COUNT).w,d0
-			beq.s	.sync
-			move.w	(a7)+,d0
-			rts
-						
+									
 ; wait 64 raster lines (about 4ms in PAL)
 wait4ms:	move.w	d0,-(a7)
 			move.w	#63,d0
@@ -707,6 +662,12 @@ loadNextFile:
 			lea		nextMusic(pc),a0
 			movem.l	d0-d2,(a0)
 			
+		; first of all, maybe a MUSIC is already loaded, so reloc it			
+			bsr		relocP61
+
+			lea		nextMusic(pc),a0
+			clr.l	m_ad(a0)
+
 			lea		currentFile(pc),a0
 			addq.w	#1,(a0)
 			move.w	(a0),d0
@@ -717,23 +678,12 @@ loadNextFile:
 
 
 isMusicFile:
-			moveq	#0,d0				; not a music file by default
 			lea		nextFx(pc),a0
 			move.l	m_ad(a0),a0
-			cmpi.l	#'LEOR',4(a0)
-			beq		.over
-
-			cmpi.l	#$3f3,(a0)
-			beq		.over
-
-			moveq	#-1,d0				; by default, everything that is NOT a EXE ( amiga EXE or AS68 exe) is supposed to be a music
-										; (because p61 module does not have specific signature :( )
-.over:	
+			cmpi.l	#'LSP1',(a0)
+			seq		d0
 			rts
-			
-			
-			
-		
+
 vblSystem:	btst	#5,$dff01f
 			beq		unknownInterrupt
 			move.l	d0,-(a7)
@@ -777,58 +727,50 @@ unknownInterrupt:
 ;unRTE:		rte
 		
 		
-ldos50Hz:	
-;			move.w	#$ff0,$dff180
-			tst.b	$bfdd00
+ldos50Hz:	tst.b	$bfdd00
 			move.w	#$2000,$dff09c
 			move.w	#$2000,$dff09c
 
 			movem.l	d0-a6,-(a7)
 			move.w	bMusicPlay(pc),d0
 			beq.s	.noMusic
+
+			lea		$dff0a0,a6
+			bsr		LSP_MusicDriver+4
+
+			; check if BMP changed in the middle of the music
+			move.l	.pMusicBPM(pc),a0
+			move.w	(a0),d0					; current music BPM
+			cmp.w	.curBpm(pc),d0
+			beq.s	.noChg
+			lea		.curBpm(pc),a2			
+			move.w	d0,(a2)					; current BPM
+			move.l	.ciaClock(pc),d1
+			divu.w	d0,d1
+			move.b	d1,$bfd400
+			lsr.w 	#8,d1
+			move.b	d1,$bfd500			
+.noChg:
 			
-			; handle fade-out
-			lea		fadeOutStep(pc),a0
-			move.w	(a0),d0
-			beq.s	.fadeOver
-			lea		fadeOutValue(pc),a1
-			move.w	(a1),d1
-			sub.w	d0,d1
-			bgt.s	.ok
-			moveq	#0,d1
-			move.w	d1,(a0)
-			lea		bMusicPlay(pc),a0
-			clr.w	(a0)
-.ok:		move.w	d1,(a1)
-			lsr.w	#8,d1
-			move.w	d1,d0
-			bsr		musicPlayer+16			; music set volume			
-.fadeOver:
-			
-			bsr		musicPlayer+8
 .noMusic:	bsr		trackLoaderTick
 
 			movem.l	(a7)+,d0-a6
 ;			move.w	#0,$dff180
 			nop
 			rte
+.pMusicBPM:	ds.l	0
 
-			
-			
-			
-ispSet:		move.l	(a7)+,a6		; return ad
-			lea		.supervisor(pc),a0
+
+ispSet:		lea		.supervisor(pc),a0
 			move.l	a0,$80.w
 			trap	#0
+			rts
+
 .supervisor:
-		; set SSP
+			; set SSP
 			move.l	pSuperStack(pc),a7
-			move.w	#0,sr					; back to user mode
-			jmp		(a6)
-			
-			
-			
-		
+			rte
+
 vectorSet:				
 			; set both user & supervisor stack
 			lea		.supervisor(pc),a0
@@ -901,7 +843,7 @@ cia50HzInstall:
 		; install 50Hz CIA TimerA for LDOS_TICK (& music player)
 		; input: d0 : BPM
 			movem.l	d0-d1/a0,-(a7)
-			move.w 	#(1<<13),$dff09a			; CIA interrupt
+			move.w 	#(1<<13),$dff09a	; CIA interrupt
 			lea		$bfd000,a0
 			move.b 	#$7f,$d00(a0)
 			move.b 	#$10,$e00(a0)
@@ -1157,10 +1099,9 @@ kernelCrcEnd:
 		include "arj7.asm"
 
 	;-------------------------------------------------------------------				
-	; Module Player
+	; Light Speed Module Player
 	;-------------------------------------------------------------------				
-musicPlayer:
-		incbin	"p61player.bin"
+		include	"LightSpeedPlayer.asm"
 		
 
 crcProceedInfo:
@@ -1200,9 +1141,7 @@ nextMusic:			dc.l	0,0,0
 sectorOffset:		ds.w	1
 pModule:			dc.l	0
 bMusicPlay:			dc.w	0
-fadeOutStep:		dc.w	0
-fadeOutValue:		dc.w	0
-clockTick:			dc.l	0
+musicTick:			dc.l	0
 startupFade:		dc.w	-1		; no startup fade by default (if HDD mode)
 
 copperListData:
