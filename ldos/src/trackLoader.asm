@@ -191,10 +191,10 @@ trackLoadStart:
 			lea	$bfe001,a4
 			lea	$bfd100,a5
 			
-			move.w 	#$8000 | (1<<4),$96(a3)		; Enable DMA Disk
+			move.w 	#$8000|(1<<4),$96(a3)		; Enable DMA Disk
 			move.w	#DISK_SYNC,$7e(a3)			; synchro word
 			move.w	#(1<<1),$9c(a3)				; clear disk req
-			move.w	#$c000 | (1<<1),$9a(a3)		; Enable Disk DMA Int
+			move.w	#$c000|(1<<1),$9a(a3)		; Enable Disk DMA Int
 
 
 			bsr	motorOn
@@ -404,10 +404,10 @@ readTrackCMD:
 				lea		$dff000,a3								
 				move.w	#2,$9c(a3)						; Clear disk int req				
 				move.l	a0,$20(a3)		; DMA address
-				move.w 	#$8000 | (1<<4),$96(a3)
+				move.w 	#$8000|(1<<4),$96(a3)
 				move.w	#DISK_SYNC,$7e(a3)			; synchro word
 				move.w	#$6600,$9e(a3)
-				move.w	#$8000 | (1<<12) | (1<<10)| (1<<8),$9E(a3)		; disk mode: fast, MFM and WORD sync
+				move.w	#$8000|(1<<12)|(1<<10)|(1<<8),$9E(a3)		; disk mode: fast, MFM and WORD sync
 				move.w	#$4000,$24(a3)
 				move.w	#(MFM_DMA_SIZE/2)|($8000),$24(a3)	; Lance la lecture DMA
 				move.w	#(MFM_DMA_SIZE/2)|($8000),$24(a3)	; (A faire 2 fois, voir bible)
@@ -654,4 +654,4 @@ m_sectorStart:		rs.w	1
 m_track:			rs.w	1
 m_sectorCount:		rs.w	1
 
-decodeBuffers:		ds.b	16 * 2
+decodeBuffers:		ds.b	16*2

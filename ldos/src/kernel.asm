@@ -319,11 +319,11 @@ runLoadedFile:
 			addq.w	#1,(a0)	
 
 		; get the kernel CRC
-IF _DEBUG
-{
+	IF _DEBUG
+
 			moveq	#-1,d0
 			bsr		crcCompute
-}
+	ENDC
 
 		; call the FX code
 			cmpa.l	#0,a1
@@ -337,11 +337,10 @@ IF _DEBUG
 .noExec:
 
 		; back from the FX: we should restore kernel state
-IF _DEBUG
-{
+	IF _DEBUG
 			moveq	#0,d0
 			bsr		crcCompute
-}
+	ENDC
 			bsr		systemInstall		
 
 		; Free all memory of previous FX
@@ -611,7 +610,7 @@ loadFile:
 			lea		nextEXEAllocs(pc),a0
 			move.l	#MFM_DMA_SIZE,(a0)+
 			move.l	#MFM_DMA_SIZE,(a0)+
-			move.l	#13320 | LDOS_MEM_ANY_RAM,(a0)+
+			move.l	#13320|LDOS_MEM_ANY_RAM,(a0)+
 			lea		nextEXEAllocs(pc),a0
 			bsr		batchAllocator
 
@@ -863,7 +862,7 @@ systemInstall:
 			lea		copperListData(pc),a0
 			bsr		installCopperList
 			move.w	d0,$dff088					; start copper
-			move.w	#$8000 | (1<<7),$dff096		; switch ON COPPER DMA
+			move.w	#$8000|(1<<7),$dff096		; switch ON COPPER DMA
 
 			bsr.s	pollVSync
 			move.w	#(1<<5)|(1<<7),$dff096					; switch OFF Sprite DMA & copper
@@ -874,8 +873,8 @@ systemInstall:
 			clr.l	(a0)
 			lea		vblSystem(pc),a0
 			move.l	a0,$6c.w
-			move.w	#$8000 | (1<<4) | (1<<9),$dff096		; DMA disk enabled
-			move.w	#$c000 | (1<<5),$dff09a		; Enable IRQ3 (vbl)
+			move.w	#$8000|(1<<4)|(1<<9),$dff096		; DMA disk enabled
+			move.w	#$c000|(1<<5),$dff09a		; Enable IRQ3 (vbl)
 
 			rts
 			
@@ -909,10 +908,9 @@ clearSprites:
 			rts
 		
 guruBootStrap:
-		repeat	(($30-$8)/4)
-		{
+		rept	(($30-$8)/4)
 			bsr		guruMeditation
-		}		
+		endr
 		
 guruMeditation:
 			move.w	#$7fff,$dff096
@@ -1127,11 +1125,6 @@ kernelCrcEnd:
 	; screen output debug routines
 	;-------------------------------------------------------------------					
 		include	"debug_screen.asm"
-
-	;-------------------------------------------------------------------				
-	; LZ4 fast depacker 
-	;-------------------------------------------------------------------				
-		include "lz4_depack.asm"
 		
 	;-------------------------------------------------------------------				
 	; ARJ mode 7 depacker 
@@ -1145,13 +1138,13 @@ kernelCrcEnd:
 		
 
 crcProceedInfo:
-		dc.w	kernelCrcStart - kernelStart, kernelCrcEnd - kernelCrcStart,0
-		dc.w	arjCrcStart - kernelStart, arjCrcEnd - arjCrcStart,0
-		dc.w	loaderCrcStart - kernelStart, loaderCrcEnd - loaderCrcStart,0
-		dc.w	relocCrcStart - kernelStart, relocCrcEnd - relocCrcStart,0
-		dc.w	memoryCrcStart - kernelStart, memoryCrcEnd - memoryCrcStart,0
-		dc.w	debugScreenCrcStart - kernelStart, debugScreenCrcEnd - debugScreenCrcStart,0
-		dc.w	directory - kernelStart
+		dc.w	kernelCrcStart-kernelStart, kernelCrcEnd-kernelCrcStart,0
+		dc.w	arjCrcStart-kernelStart, arjCrcEnd-arjCrcStart,0
+		dc.w	loaderCrcStart-kernelStart, loaderCrcEnd-loaderCrcStart,0
+		dc.w	relocCrcStart-kernelStart, relocCrcEnd-relocCrcStart,0
+		dc.w	memoryCrcStart-kernelStart, memoryCrcEnd-memoryCrcStart,0
+		dc.w	debugScreenCrcStart-kernelStart, debugScreenCrcEnd-debugScreenCrcStart,0
+		dc.w	directory-kernelStart
 fatSize:	dc.w	0,0				; hacky: fatsize is patched at begin
 
 		dc.w	-2			; end marker
@@ -1161,9 +1154,9 @@ dynamicAllocs:
 systemChipBase:		dc.l	$100			; this is the first CHIP alloc by kernel, so if it fall to $0, keep $100 space for cpu vectors
 pCopperList1:		dc.l	1024
 pCopperList2:		dc.l	1024
-pKernelBase:		dc.l	0 | LDOS_MEM_ANY_RAM
-pUserStack:			dc.l	LDOS_USERSTACK_SIZE | LDOS_MEM_ANY_RAM
-pSuperStack:		dc.l	LDOS_SUPERSTACK_SIZE | LDOS_MEM_ANY_RAM
+pKernelBase:		dc.l	0|LDOS_MEM_ANY_RAM
+pUserStack:			dc.l	LDOS_USERSTACK_SIZE|LDOS_MEM_ANY_RAM
+pSuperStack:		dc.l	LDOS_SUPERSTACK_SIZE|LDOS_MEM_ANY_RAM
 					dc.l	-2
 
 	rsreset

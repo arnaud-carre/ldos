@@ -55,7 +55,6 @@ start0:
 		sub.l	#64*1024,a0
 		move.l	a0,m_buffer(a7)
 
-	move.w	d0,$100.w
 		move.l	4.w,a6
 		move.l	m_originalA1(a7),a1
 		move.w	#2,$1c(a1)		; read cmd

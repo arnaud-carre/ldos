@@ -25,7 +25,7 @@
 ;
 ;*****************************************************************
 
-;	opt o-		; switch off ALL optimizations (we don't want vasm to change some code size, and all optimizations are done!)
+	opt o-		; switch off ALL optimizations (we don't want vasm to change some code size, and all optimizations are done!)
 
 LSP_MusicDriver:
 			bra.w	.LSP_PlayerInit
