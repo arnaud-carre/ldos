@@ -98,6 +98,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="install.cpp" />
+    <ClCompile Include="ldos.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ldos.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

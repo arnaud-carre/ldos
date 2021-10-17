@@ -376,10 +376,10 @@ bool	CDisk::AddScreen(CScreen *pScreen)
 
 u32 bswap(u32 v)
 {
-	return ((( v&0xff000000 ) >> 24 ) |
-			(( v&0x00ff0000 ) >> 8 ) |
-			(( v&0x0000ff00 ) << 8 ) |
-			(( v&0x000000ff ) << 24 ));
+	return (((v & 0xff000000) >> 24) |
+		((v & 0x00ff0000) >> 8) |
+		((v & 0x0000ff00) << 8) |
+		((v & 0x000000ff) << 24));
 }
 
 void	ADFSave(const char *pName, unsigned char *pDisk, u32 iRawSize)
@@ -904,15 +904,12 @@ char	*ptr;
 		return pFirst;
 }
 
-
-void	Usage()
-{
-	printf("Usage: install <script text> <adf disk1> [adf disk2]\n");
-	printf("\n");
-}
-
+extern int	ldosMain(int _argc, char *_argv[]);
 int	main(int _argc, char *_argv[])
 {
+#if 1
+	return ldosMain(_argc, _argv);
+#else
 	printf("AMIGA Demo Putting Together.\n");
 	printf("Written by Arnaud Carr%c.\n", 0x82);
 	printf("Leonard Demo Kernel v1.0\n");
@@ -937,6 +934,7 @@ int	main(int _argc, char *_argv[])
 
 	if (argc < 3)
 	{
+		extern void	Usage();
 		Usage();
 		return -1;
 	}
@@ -1003,7 +1001,7 @@ int	main(int _argc, char *_argv[])
 		}
 	}
 
-		
+#endif		
 
 }
 

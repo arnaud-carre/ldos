@@ -118,7 +118,7 @@ hunkData:
 			move.l	a1,(a2)			
 .noCode:	
 		; WARNING: here we should always copy to lower ad ( dst < src )
-			bsr		fastMemcpy
+			bsr		fastMemMove
 			add.l	d0,a0
 
 		; maybe reloc hunk here
@@ -159,41 +159,6 @@ m_hunkAds:			rs.l	MAX_HUNKS+1
 m_hunkClearSize:	rs.l	MAX_HUNKS
 m_relocSizeof:		rs.w	1
 		
-; Reloc "LEOR" executable ( as68 )		
-leonardReloc:
-
-			; alloc the size
-			lea		nextFx(pc),a2
-			move.l	m_size(a2),d0	; size in bytes
-			bsr		allocAnyMem
-
-			lea		(nextFx+m_ad)(pc),a1
-			move.l	(a1),a0				; src
-			move.l	d0,(a1)				; patch new next run ad (dst)
-			move.l	d0,a1
-			move.l	m_size(a2),d0	; size in bytes
-			bsr		fastMemcpy
-
-			move.l	m_ad(a2),a0
-
-			cmpi.w	#$6000,(a0)
-			bne.s	.noLeonard
-			cmpi.l	#'LEOR',4(a0)
-			bne.s	.noLeonard
-
-			lea		8(a0),a1
-			moveq	#0,d1
-			move.w	2(a0),d1
-			addq.w	#2,d1			; header size
-			add.l	a0,d1			; ad to add
-			
-.loop:		move.l	(a1)+,d0		; offset to patch
-			bmi.s	.noLeonard
-			add.l	d1,0(a0,d0.l)
-			bra.s	.loop
-				
-.noLeonard:		rts
-
 
 relocError:
 			lea		.txt(pc),a0
@@ -205,58 +170,7 @@ relocError:
 ; AMIGA Module relocation
 ; split data between music score data ( any ram ) and samples data (CHIP)
 relocP61:
-		; first, switch off module and free
-			lea		bMusicPlay(pc),a0
-			tst.w	(a0)
-			beq.s	.noPlaying
-			clr.w	(a0)
-			bsr		vSync
-			bsr		musicPlayer+4				; pr_end
-.noPlaying:			
-			moveq	#MEMLABEL_MUSIC,d0
-			bsr		freeMemLabel
-
-			move.b	#MEMLABEL_MUSIC,(SVAR_CURRENT_MEMLABEL).w
-
-			move.l	(nextMusic+m_ad)(pc),a0
-			moveq	#0,d0
-			move.w	(a0),d0					; score size
-			bsr 	allocAnyMemCopy
-
-			lea		pModule(pc),a0
-			move.l	d0,(a0)
-			
-			move.l	(nextMusic+m_ad)(pc),a0
-			move.l	(nextMusic+m_size)(pc),d0		; mod size in bytes
-			moveq	#0,d1
-			move.w	(a0),d1					; score size
-			sub.l	d1,d0					; sample size
-			add.l	d1,a0					; samples start
-			bsr 	allocChipMemCopy
-
-			move.l	d0,a1
-			move.l	pModule(pc),a0
-			bsr		musicPlayer+0
-
-			moveq	#0,d0
-			move.w	(nextMusic+m_arg)(pc),d0
-			beq.s	.noSetPos
-			bsr		musicPlayer+20			; music set position
-.noSetPos:
-			lea		fadeOutStep(pc),a0
-			clr.w	(a0)
-			moveq	#64,d0
-			bsr		musicPlayer+16			; music set volume			
-			
+			illegal
 			rts
 			
-	IF	_DEBUG
-	{
-memmoveError:
-			lea		.txt(pc),a0
-			trap	#0
-.txt:		dc.b	'memmove ERROR',0
-			even
-	}
-	
 relocCrcEnd:

@@ -131,7 +131,7 @@ allocAnyMemCopy:
 		bsr		allocAnyMem
 		move.l	d0,a1			; dst ad
 		move.l	(a7)+,d0		; original size, a0=src is preserved
-		bsr		fastMemcpy
+		bsr		fastMemMove
 		move.l	a1,d0
 		move.l	(a7)+,a1
 		rts
@@ -147,7 +147,7 @@ allocChipMemCopy:
 		bsr		allocChipMem
 		move.l	d0,a1			; dst ad
 		move.l	(a7)+,d0		; original size, a0=src is preserved
-		bsr		fastMemcpy
+		bsr		fastMemMove
 		move.l	a1,d0
 		move.l	(a7)+,a1
 		rts

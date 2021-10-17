@@ -67,16 +67,18 @@ entry:
 	; weird random sprite bug: always wait vsync before disabling sprite DMA
 		bsr		pollVSync
 
-	; Now we don't need system anymore
-	; switch off all interrupts
-		move.w	#$7fff,$dff096		;desactive tous les DMA
-		move.w	#$7fff,$dff09a		;desactive toutes les ITs
-		move.w	#$7fff,$dff09c
-		move.w	#$7fff,$dff09e
-		
 	; clear sprites
 		bsr	clearSprites
-		
+
+	; Now we don't need system anymore
+	; switch off all interrupts
+		lea		$dff000,a6
+		move.w	#$7fff,d0
+		move.w	d0,$96(a6)		;desactive tous les DMA
+		move.w	d0,$9a(a6)		;desactive toutes les ITs
+		move.w	d0,$9c(a6)
+		move.w	d0,$9e(a6)
+
 	; store HDD version buffers
 		move.l	m_hddBuffer1(a7),(SVAR_HDD_BUFFER).w
 		move.l	m_hddBuffer2(a7),(SVAR_HDD_BUFFER2).w
@@ -160,7 +162,7 @@ entry:
 		move.l	pKernelBase(pc),a1		
 		move.w	#(kernelEnd-kernelStart),d0
 		add.w	fatSize(pc),d0
-		bsr		fastMemcpy		
+		bsr		fastMemMove
 		jmp		(a1)						; jump to kernel base relocated
 
 align128:
@@ -296,12 +298,6 @@ runLoadedFile:
 
 		; Proceed and reloc loaded data ( exe, module, etc)
 			move.l	(nextFx+m_ad)(pc),a0
-			cmpi.l	#'LEOR',4(a0)
-			bne.s	.noAs68
-
-			bsr		leonardReloc		; reloc leonard as68 reloc simple table
-			bra.s	.next
-
 .noAs68:	cmpi.l	#$3f3,(a0)
 			bne.s	.noAmiga
 
@@ -374,7 +370,10 @@ installCopperList:
 musicStop:
 	illegal
 			rts
-	
+
+musicGetTick:
+			move.l	musicTick(pc),d0
+			rts
 
 musicStart:
 			move.l	pModule(pc),d0
@@ -422,12 +421,17 @@ checkCustomVbl:
 				rts
 .txt:			dc.b	"VBLANK function called but",10,"custom $6c installed",0
 				even
-			
+
+
 ; a0: src ( aligned on 2 )
 ; a1: dst ( aligned on 2 )
 ; d0.l: size ( aligned on 2 )
-fastMemcpy:	cmpa.l	a0,a1
+fastMemMove:
+			cmpa.l	a0,a1
 			beq		.useless
+			bgt		memMoveMinus
+
+.memMovePlus:
 			movem.l	d0-d7/a0-a2,-(a7)
 			move.w	d0,-(a7)
 			lsr.l	#7,d0
@@ -455,6 +459,38 @@ fastMemcpy:	cmpa.l	a0,a1
 
 .over:		movem.l	(a7)+,d0-d7/a0-a2
 .useless:	rts
+
+memMoveMinus:
+			movem.l	d0-d7/a0-a2,-(a7)
+			add.l	d0,a0
+			add.l	d0,a1
+			move.w	d0,-(a7)
+			lsr.l	#7,d0
+			beq.s	.reminder
+
+			subq.w	#1,d0				; should fit in 15bits for the DBF
+.copy:		lea		-32*4(a1),a1
+			movem.l	32*3(a0),d1-d7/a2
+			movem.l	d1-d7/a2,-(a1)
+			movem.l	32*2(a0),d1-d7/a2
+			movem.l	d1-d7/a2,-(a1)
+			movem.l	32*1(a0),d1-d7/a2
+			movem.l	d1-d7/a2,-(a1)
+			movem.l	(a0),d1-d7/a2
+			movem.l	d1-d7/a2,-(a1)
+			dbf		d0,.copy
+
+.reminder:	moveq	#127,d0
+			and.w	(a7)+,d0		; reminder on 128 bytes
+			lsr.w	#1,d0
+			beq.s	.over
+			subq.w	#1,d0
+.cloop:		move.w	-(a0),-(a1)
+			dbf		d0,.cloop
+
+.over:		movem.l	(a7)+,d0-d7/a0-a2
+			rts
+
 
 ; a0: dst ( aligned on 2 )
 ; d0.l: size in bytes ( aligned on 2 )
@@ -739,18 +775,18 @@ ldos50Hz:	tst.b	$bfdd00
 			bsr		LSP_MusicDriver+4
 
 			; check if BMP changed in the middle of the music
-			move.l	.pMusicBPM(pc),a0
-			move.w	(a0),d0					; current music BPM
-			cmp.w	.curBpm(pc),d0
-			beq.s	.noChg
-			lea		.curBpm(pc),a2			
-			move.w	d0,(a2)					; current BPM
-			move.l	.ciaClock(pc),d1
-			divu.w	d0,d1
-			move.b	d1,$bfd400
-			lsr.w 	#8,d1
-			move.b	d1,$bfd500			
-.noChg:
+;			move.l	.pMusicBPM(pc),a0
+;			move.w	(a0),d0					; current music BPM
+;			cmp.w	.curBpm(pc),d0
+;			beq.s	.noChg
+;			lea		.curBpm(pc),a2			
+;			move.w	d0,(a2)					; current BPM
+;			move.l	.ciaClock(pc),d1
+;			divu.w	d0,d1
+;			move.b	d1,$bfd400
+;			lsr.w 	#8,d1
+;			move.b	d1,$bfd500			
+;.noChg:
 			
 .noMusic:	bsr		trackLoaderTick
 
@@ -1142,6 +1178,7 @@ sectorOffset:		ds.w	1
 pModule:			dc.l	0
 bMusicPlay:			dc.w	0
 musicTick:			dc.l	0
+clockTick:			dc.l	0
 startupFade:		dc.w	-1		; no startup fade by default (if HDD mode)
 
 copperListData:

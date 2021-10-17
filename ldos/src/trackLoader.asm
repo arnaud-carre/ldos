@@ -614,7 +614,7 @@ hddLoadStart:
 			mulu.w	#512,d1						;
 			move.l	d1,d0						; size
 
-			bsr		fastMemcpy
+			bsr		fastMemMove
 
 			add.l	d0,a1						; end ad
 			move.l	a1,(SVAR_LOAD_PTR).w		; allow depacker to run 
