@@ -67,9 +67,6 @@ entry:
 	; weird random sprite bug: always wait vsync before disabling sprite DMA
 		bsr		pollVSync
 
-	; clear sprites
-		bsr	clearSprites
-
 	; Now we don't need system anymore
 	; switch off all interrupts
 		lea		$dff000,a6
@@ -78,6 +75,9 @@ entry:
 		move.w	d0,$9a(a6)		;desactive toutes les ITs
 		move.w	d0,$9c(a6)
 		move.w	d0,$9e(a6)
+
+	; clear sprites
+		bsr	clearSprites
 
 	; store HDD version buffers
 		move.l	m_hddBuffer1(a7),(SVAR_HDD_BUFFER).w
@@ -159,7 +159,8 @@ entry:
 		bsr		ispSet								; bug fixed! Set ISP before relocating kernel
 
 		lea		kernelStart(pc),a0
-		move.l	pKernelBase(pc),a1		
+		move.l	pKernelBase(pc),a1
+		moveq	#0,d0
 		move.w	#(kernelEnd-kernelStart),d0
 		add.w	fatSize(pc),d0
 		bsr		fastMemMove
@@ -469,7 +470,7 @@ memMoveMinus:
 			beq.s	.reminder
 
 			subq.w	#1,d0				; should fit in 15bits for the DBF
-.copy:		lea		-32*4(a1),a1
+.copy:		lea		-32*4(a0),a0
 			movem.l	32*3(a0),d1-d7/a2
 			movem.l	d1-d7/a2,-(a1)
 			movem.l	32*2(a0),d1-d7/a2
@@ -804,7 +805,10 @@ ispSet:		lea		.supervisor(pc),a0
 
 .supervisor:
 			; set SSP
-			move.l	pSuperStack(pc),a7
+			move.l	pSuperStack(pc),a0
+			move.l	2(a7),-(a0)
+			move.w	(a7),-(a0)
+			move.l	a0,a7
 			rte
 
 vectorSet:				

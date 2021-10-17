@@ -358,14 +358,9 @@ void	Usage()
 void	ldosFatCreate(const ldosFile* files, int count, ldosFatEntry* out)
 {
 	u32 diskOffset = 0;
-	int diskId = 0;
 	for (int i = 0; i < count; i++)
 	{
-		if (files->m_diskId != diskId)
-		{
-			diskId = files->m_diskId;
-			diskOffset = 0;
-		}
+		assert(0 == files->m_diskId);
 
 		out->diskOffset = bswap32(diskOffset);
 		out->originalSize = bswap32(files->m_originalSize);
@@ -378,6 +373,7 @@ void	ldosFatCreate(const ldosFile* files, int count, ldosFatEntry* out)
 		out->flags = bswap16(flags);
 		out->pad = 0;
 
+		diskOffset += files->m_packedSize;
 		out++;
 		files++;
 	}
