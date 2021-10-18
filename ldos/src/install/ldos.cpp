@@ -62,7 +62,7 @@ static const u8* arjSkipHeader(const u8* pData)
 
 
 // arj file ( http://datacompression.info/ArchiveFormats/arj.txt )
-static u8*	ArjDataExtract(const u8* arj, int method, u32& outSize)
+u8*	ldosFile::ArjDataExtract(const u8* arj, int method, u32& outSize)
 {
 
 	u8* ret = NULL;
@@ -81,6 +81,9 @@ static u8*	ArjDataExtract(const u8* arj, int method, u32& outSize)
 			// arjm7 68k code use 2x$00 bytes at the end of the file
 			// always align on 2 bytes for LDOS floppy FAT
 			outSize = (rawPackedSize + 2 + 1)&(-2);
+			if (outSize >= originalSize)
+				printf("  WARNING: This file can't be compressed\n");
+
 			ret = (u8*)malloc(outSize);
 			memset(ret, 0, outSize);		// be sure two last bytes are 0
 			memcpy(ret, pData2, rawPackedSize);
@@ -88,12 +91,13 @@ static u8*	ArjDataExtract(const u8* arj, int method, u32& outSize)
 		else if (4 == method)
 		{
 			// arjm4 68k code need original size to detect end of the file
-			outSize = (rawPackedSize + 4 + 1)&(-2);
+			outSize = (rawPackedSize + 2 + 1)&(-2);
 			ret = (u8*)malloc(outSize);
 			memset(ret, 0, outSize);		// be sure two last bytes are 0
-			u32* w = (u32*)ret;
-			w[0] = bswap32(originalSize);
-			memcpy(ret + 4, pData2, rawPackedSize);
+			u16* w = (u16*)ret;
+			assert(originalSize<=0x7fff);
+			w[0] = bswap16(u16(originalSize));
+			memcpy(ret + 2, pData2, rawPackedSize);
 		}
 	}
 	return ret;
@@ -102,16 +106,8 @@ static u8*	ArjDataExtract(const u8* arj, int method, u32& outSize)
 bool	ldosFile::ArjPack(int method)
 {
 	bool ret = false;
-	if (0 == method)
-	{
-		// no packing
-		m_packedData = (u8*)malloc(m_originalSize);
-		memcpy(m_packedData, m_data, m_originalSize);
-		m_packedSize = m_originalSize;
-		m_packingRatio = 100;
-		ret = true;
-	}
-	else
+	m_packingMethod = method;
+	if ( method > 0 )
 	{
 		const char* sTmpSrcFile = "tmpSrc.bin";
 		const char* sTmpDstFile = "tmpDst.pack";
@@ -151,6 +147,18 @@ bool	ldosFile::ArjPack(int method)
 			remove(sTmpDstFile);
 		}
 	}
+
+	if (0 == m_packingMethod)
+	{
+		// no packing
+		m_packedSize = (m_originalSize + 1)&(-2);
+		m_packedData = (u8*)malloc(m_packedSize);
+		memset(m_packedData, 0, m_packedSize);
+		memcpy(m_packedData, m_data, m_originalSize);
+		m_packingRatio = 100;
+		ret = true;
+	}
+
 	if (!ret)
 		printf("ERROR: Unable to ARJm%d pack file!\n", method);
 
@@ -222,9 +230,9 @@ bool	ldosFile::LoadBoot(const ldosFile& kernel, int count)
 
 		int dataOffset = m_originalSize + kernel.m_packedSize;
 		assert(0 == (dataOffset & 1));
-		int bootAndKernelSectorCount = (dataOffset + 511) / 512;
+		assert(dataOffset < 0xffff);
 
-		patch = PatchNext4afc(patch, end, u16(bootAndKernelSectorCount));
+		patch = PatchNext4afc(patch, end, u16((dataOffset+511)&(-512)));
 		patch = PatchNext4afc(patch, end, u16(dataOffset));
 		patch = PatchNext4afc(patch, end, u16(count * sizeof(ldosFatEntry)));
 		m_sName = _strdup("boot.bin");
@@ -258,6 +266,7 @@ bool	ldosFile::LoadKernel(const ldosFatEntry* fat, int count)
 bool	ldosFile::LoadUserFile(const char* sFilename, int diskId, bool packing)
 {
 	Release();
+	printf("Loading \"%s\"\n", sFilename);
 	bool bRet = false;
 	m_data = rawFileLoad(sFilename, m_originalSize);
 	if ((m_data) && ( m_originalSize > 0))
@@ -266,10 +275,6 @@ bool	ldosFile::LoadUserFile(const char* sFilename, int diskId, bool packing)
 		m_sName = _strdup(sFilename);
 		m_type = DetermineFileType(sFilename);
 		bRet = ArjPack( packing ? 7 : 0);		// if packed, user file is always packed using arjm7
-	}
-	else
-	{
-		printf("ERROR: Unable to read file \"%s\"\n", sFilename);
 	}
 	return bRet;
 }
@@ -309,6 +314,7 @@ int		ldosScriptParsing(const char* sScriptName, ldosFile* out)
 		removeAnyEOL(ptr);
 		if (!_stricmp(tmpString, "end")) break;
 
+/*
 		if (!_stricmp(tmpString, "pack(off)"))
 		{
 			packing = false;
@@ -319,6 +325,7 @@ int		ldosScriptParsing(const char* sScriptName, ldosFile* out)
 			packing = true;
 			continue;
 		}
+*/
 
 		if (!_stricmp(tmpString, "change(disk)"))
 		{
@@ -363,14 +370,10 @@ void	ldosFatCreate(const ldosFile* files, int count, ldosFatEntry* out)
 		assert(0 == files->m_diskId);
 
 		out->diskOffset = bswap32(diskOffset);
-		out->originalSize = bswap32(files->m_originalSize);
+		out->originalSize = bswap32((files->m_originalSize+1)&(-2));
 		out->packedSize = bswap32(files->m_packedSize);
 
-		u16 flags = 0;
-		if (files->m_type == kLSPMusicBank)
-			flags |= 1;
-
-		out->flags = bswap16(flags);
+		out->flags = bswap16(1<<files->m_type);
 		out->pad = 0;
 
 		diskOffset += files->m_packedSize;
@@ -382,7 +385,14 @@ void	ldosFatCreate(const ldosFile* files, int count, ldosFatEntry* out)
 void	ldosFile::DisplayInfo(u32 diskOffset, int diskId) const
 {
 	// display infos
-	printf("%6d->%6d (%3d%%) [%d]:$%06x (%s)\n", m_originalSize, m_packedSize, m_packingRatio, diskId, diskOffset, m_sName);
+	static const char* sTypes[kLSPMaxFileType] = 
+	{
+		"Raw",
+		"Exe",
+		"LSM",
+		"LSB",
+	};
+	printf("[%d]:$%06x [%s] %6d->%6d (%3d%%) (%s)\n", diskId, diskOffset, sTypes[int(m_type)], m_originalSize, m_packedSize, m_packingRatio, m_sName);
 }
 
 u32	ldosFile::OutToDisk(u8* adfBuffer, u32 diskOffset, int diskId) const
@@ -434,6 +444,7 @@ static	bool	AdfExport(char* argv[], const ldosFile* files, int count, const ldos
 	diskOffset = (diskOffset + 2 * 11 * 512 - 1)&(-2 * 11 * 512);
 	BootSectorExec((u32*)adfBuffer);
 
+	printf("Generating ADF file \"%s\"...\n", argv[0]);
 	FILE* h;
 	if (0 == fopen_s(&h, argv[0], "wb"))
 	{
@@ -449,7 +460,7 @@ static	bool	AdfExport(char* argv[], const ldosFile* files, int count, const ldos
 	return ret;
 }
 
-int	ldosMain(int _argc, char *_argv[])
+int	main(int _argc, char *_argv[])
 {
 	printf("LDOS Installer v1.30\n");
 	printf("Written by Arnaud Carr%c.\n\n", 0x82);

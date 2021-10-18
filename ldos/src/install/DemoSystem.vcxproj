@@ -51,7 +51,7 @@
     <OutDir>$(SolutionDir)..\..\bin</OutDir>
     <IntDir>$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
-    <TargetName>install</TargetName>
+    <TargetName>ldos</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -97,7 +97,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="install.cpp" />
     <ClCompile Include="ldos.cpp" />
   </ItemGroup>
   <ItemGroup>

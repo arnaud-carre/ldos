@@ -1,3 +1,4 @@
-;parcade.p61
+parcade.lsmusic
+parcade.lsbank
 sprites_loader/sprite.bin
 greetings/greetings.bin

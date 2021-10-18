@@ -94,13 +94,13 @@ start:
 			move.l	d0,m_fakeStart(a7)
 
 		; search the NOP to jump in the code
-			move.l	m_hddBuffer1(a7),a0
-			movea.l	a0,a2
+			move.l	m_hddBuffer1(a7),a1
+			movea.l	a1,a2
 .search:	cmpi.w	#$4e71,(a2)+
 			bne.s	.search
 
-			move.l	m_chipStart(a7),a1
-			add.l	#(512-64)*1024,a1
+			move.l	m_chipStart(a7),a0
+			add.l	#(512-64)*1024,a0
 			jmp		(a2)				; jump in the bootsector code
 
 		

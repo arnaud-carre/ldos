@@ -17,7 +17,7 @@ relocCrcStart:
 
 
 amigaReloc:
-				
+			move.b	#MEMLABEL_USER_FX,(SVAR_CURRENT_MEMLABEL).w		; all new alloc will now be part of the "FX to be run"
 			lea		-m_relocSizeof(a7),a7
 			movea.l	a7,a6
 
@@ -161,11 +161,43 @@ relocError:
 .txt:		dc.b	'RELOC Error',0
 			even
 
-			
-; AMIGA Module relocation
-; split data between music score data ( any ram ) and samples data (CHIP)
-relocP61:
-			illegal
+; Light Speed Player relocation
+relocLSMusic:
+			bsr.s	stopAnyLSP
+			moveq	#MEMLABEL_MUSIC_LSM,d0
+			bsr		freeMemLabel
+			move.b	#MEMLABEL_MUSIC_LSM,(SVAR_CURRENT_MEMLABEL).w
+			move.l	(nextFx+m_ad)(pc),a0
+			move.l	(nextFx+m_size)(pc),d0
+			bsr 	allocAnyMemCopy
+			lea		LSMusic(pc),a1
+			move.l	d0,(a1)
+			lea		(nextFx+m_ad)(pc),a0
+			clr.l	(a0)
 			rts
+
+relocLSBank:
+			bsr.s	stopAnyLSP
+			moveq	#MEMLABEL_MUSIC_LSB,d0
+			bsr		freeMemLabel
+			move.b	#MEMLABEL_MUSIC_LSB,(SVAR_CURRENT_MEMLABEL).w
+			move.l	(nextFx+m_ad)(pc),a0
+			move.l	(nextFx+m_size)(pc),d0
+			bsr 	allocChipMemCopy
+			lea		LSBank(pc),a1
+			move.l	d0,(a1)
+			lea		(nextFx+m_ad)(pc),a0
+			clr.l	(a0)
+			rts
+
+stopAnyLSP:
+			lea		bMusicPlay(pc),a0
+			tst.w	(a0)
+			beq.s	.noPlaying
+			clr.w	(a0)
+			bsr		musicStop				; pr_end
+.noPlaying:	rts
+
+
 			
 relocCrcEnd:

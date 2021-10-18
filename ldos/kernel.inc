@@ -9,7 +9,7 @@
 ;
 ;---------------------------------------------------------
 
-LDOS_VERSION				=	110
+LDOS_VERSION				=	130
 
 LDOS_BASE					=	$4
 LDOS_MUSIC_PLAYER_ENABLED	=	1

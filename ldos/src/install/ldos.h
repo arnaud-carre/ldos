@@ -7,15 +7,13 @@ typedef signed char		s8;
 typedef signed short	s16;
 typedef signed int		s32;
 
-
 enum ldosFileType
 {
-	kUnknownRawBinary,
-	kBootSector,
-	kLDOSKernel,
+	kUnknownRawBinary = 0,
 	kAmigaExeFile,
 	kLSPMusicScore,
 	kLSPMusicBank,
+	kLSPMaxFileType
 };
 
 enum ldosPackType
@@ -41,6 +39,7 @@ struct  ldosFile
 		m_data = NULL;
 		m_packedData = NULL;
 		m_sName = NULL;
+		m_type = kUnknownRawBinary;
 	}
 
 	bool	LoadUserFile(const char* sFilename, int diskId, bool packing);
@@ -48,6 +47,7 @@ struct  ldosFile
 	bool	LoadBoot(const ldosFile& kernel, int count);
 	void	DisplayInfo(u32 diskOffset, int diskId) const;
 	u32		OutToDisk(u8* adfBuffer, u32 diskOffset, int diskId) const;
+	u8*		ArjDataExtract(const u8* arj, int method, u32& outSize);
 
 	ldosFileType	DetermineFileType(const char* sFilename);
 	void			Release();
@@ -60,5 +60,6 @@ struct  ldosFile
 	char*	m_sName;
 	u32		m_packedSize;
 	int		m_packingRatio;
+	int		m_packingMethod;
 	ldosFileType	m_type;
 };

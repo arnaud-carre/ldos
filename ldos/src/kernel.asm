@@ -18,18 +18,18 @@ _LVOOpenLib			=	-552
 
 
 ; come from boot sector
-; d6 = disk offset
-; d7 = fat size
+; d6 = disk offset|FAT size
 
 ; NOTE: here the AMIGA system is still running. We use amiga OS to get memory configuration.
 ;		After that, we kill everything, relocate and run our own OS ( from kernelStart to kernelEnd )
 
 entry:
-		lea		diskOffset(pc),a0
-		ext.l	d6
-		move.l	d6,(a0)
 		lea		fatSize(pc),a0
-		move.w	d7,(a0)
+		move.w	d6,(a0)
+		lea		diskOffset(pc),a0
+		clr.w	d6
+		swap	d6
+		move.l	d6,(a0)
 
 	; switch off cache using system call if ROM > 37
 		move.l	$4.w,a6
@@ -235,6 +235,7 @@ mainDemoLoop:
 		
 		bra.s	mainDemoLoop
 		
+			opt o-		; switch off ALL optimizations (we really want these bra to be 4bytes )
 
 kernelLibrary:
 			bra.w	userLoadNextFile
@@ -250,6 +251,7 @@ kernelLibrary:
 			bra.w	getEntropy
 			bra.w	trackLoaderTick
 			
+			opt o+		; enable
 			
 persistentAlloc:
 			movem.l	a0,-(a7)
@@ -279,8 +281,6 @@ persistentTrash:
 			
 userLoadNextFile:
 			bsr		loadNextFile
-		; if current FX is still doing allocation when PRELOAD returns, it's marked as "USER_FX"
-			move.b	#MEMLABEL_USER_FX,(SVAR_CURRENT_MEMLABEL).w
 			rts
 			
 			
@@ -293,21 +293,23 @@ runLoadedFile:
 			moveq	#MEMLABEL_PRECACHED_FX,d0
 			bsr		unmarkMemLabel
 
-		; from here, the memory used for the cached file is marked as "FREE"
-		; all next "alloc" will return pointers "lower", but may overlap.
-			move.b	#MEMLABEL_USER_FX,(SVAR_CURRENT_MEMLABEL).w		; all new alloc will now be part of the "FX to be run"
-
 		; Proceed and reloc loaded data ( exe, module, etc)
-			move.l	(nextFx+m_ad)(pc),a0
-.noAs68:	cmpi.l	#$3f3,(a0)
-			bne.s	.noAmiga
-
+			move.w	(nextFx+m_flags)(pc),d0
+			btst	#kLDOSExeFile,d0
+			beq.s	.noExe
 			bsr		amigaReloc			; AMIGA exe relocation routine + move memory down for fragmentation
 			bra.s	.next
+.noExe:		btst	#kLDOSLsMusicFile,d0
+			beq.s	.noLsMusic
+			bsr		relocLSMusic
+			bra.s	.next
 
-.noAmiga:	
+.noLsMusic:	btst	#kLDOSLsBankFile,d0
+			beq.s	.noLsBank
+			bsr		relocLSBank
+			bra.s	.next
 
-			lea		.txtUnknowFile(pc),a0
+.noLsBank:	lea		.txtUnknowFile(pc),a0
 			trap	#0
 
 .next:		lea		(nextFx+m_ad)(pc),a0
@@ -368,22 +370,45 @@ installCopperList:
 			rts
 		
 musicStop:
-	illegal
+			
 			rts
 
 musicGetTick:
 			move.l	musicTick(pc),d0
 			rts
 
-musicStart:
-			move.l	pModule(pc),d0
+musicStart:	
+			lea		bMusicPlay(pc),a0
+			tst.w	(a0)
+			bne.s	.errm
+			move.l	LSMusic(pc),d0
 			beq.s	.skip
+			move.l	LSBank(pc),d1
+			beq.s	.skip
+
+			move.l	d0,a0
+			move.l	d1,a1
+			lea		LSPDmaCon+1(pc),a2
+			bsr		LSP_MusicDriver
+			lea		LSPInfos(pc),a1
+			move.l	a0,(a1)
+
+			lea		LSPCurBpm(pc),a2
+			move.w	(a0),d0
+			move.w	d0,(a2)					; current BPM
+			bsr		cia50HzInstall
+
 			lea		musicTick(pc),a0
 			clr.l	(a0)
 			lea		bMusicPlay(pc),a0
 			move.w	#-1,(a0)
 .skip:		rts
-									
+						
+.errm:		lea		.txt(pc),a0
+			trap	#0
+.txt:		dc.b	"musicStart called while music is playing",0
+			even
+
 ; wait 64 raster lines (about 4ms in PAL)
 wait4ms:	move.w	d0,-(a7)
 			move.w	#63,d0
@@ -653,6 +678,7 @@ loadFile:
 			move.l	d1,d0			; packed block size to alloc
 
 			move.l	m_size(a6),d1	; depacked block size to alloc
+
 			bsr		nextEXEDoAlloc
 			
 			move.l	nextEXEDepacked(pc),m_ad(a6)
@@ -663,13 +689,13 @@ loadFile:
 			
 		; start trackloader !!
 			bsr		trackLoadStart
-					
+
 		; now loading is running async, we could alloc a mem block for depacked data
 		; and run the depacker in the main thread (depacker takes care or loading ptr)		
 			move.l	(a7)+,a1
 			add.w	sectorOffset(pc),a1		; packed data ad
 			move.l	m_ad(a6),a0
-		
+
 		; run the depacker (packed data are loading async)
 			bsr		mainThreadDepack
 
@@ -678,7 +704,7 @@ loadFile:
 			bsr		freeMemLabel
 
 			rts
-		
+
 ;-----------------------------------------------------------------		
 loadNextFile:
 			move.l	(nextFx+m_ad)(pc),d0
@@ -687,37 +713,6 @@ loadNextFile:
 			move.w	currentFile(pc),d0
 			bsr		loadFile
 
-		; Special case: check if we have a music file
-		; in that case, store music pointer & size, and preload the next file (FX)
-			bsr		isMusicFile
-			tst.w	d0
-			beq		.noMusic
-
-		; music file, store pointers for next run
-			movem.l	nextFx(pc),d0-d2		; m_ad, m_size, m_arg
-			lea		nextMusic(pc),a0
-			movem.l	d0-d2,(a0)
-			
-		; first of all, maybe a MUSIC is already loaded, so reloc it			
-			bsr		relocP61
-
-			lea		nextMusic(pc),a0
-			clr.l	m_ad(a0)
-
-			lea		currentFile(pc),a0
-			addq.w	#1,(a0)
-			move.w	(a0),d0
-			bsr		loadFile
-			
-.noMusic:
-			rts
-
-
-isMusicFile:
-			lea		nextFx(pc),a0
-			move.l	m_ad(a0),a0
-			cmpi.l	#'LSP1',(a0)
-			seq		d0
 			rts
 
 vblSystem:	btst	#5,$dff01f
@@ -763,9 +758,11 @@ unknownInterrupt:
 ;unRTE:		rte
 		
 		
-ldos50Hz:	tst.b	$bfdd00
+ldos50Hz:	
 			move.w	#$2000,$dff09c
 			move.w	#$2000,$dff09c
+			btst.b	#0,$bfdd00
+			beq.s	.skipa
 
 			movem.l	d0-a6,-(a7)
 			move.w	bMusicPlay(pc),d0
@@ -774,27 +771,38 @@ ldos50Hz:	tst.b	$bfdd00
 			lea		$dff0a0,a6
 			bsr		LSP_MusicDriver+4
 
+			lea		musicTick(pc),a0
+			addq.l	#1,(a0)
+
 			; check if BMP changed in the middle of the music
-;			move.l	.pMusicBPM(pc),a0
-;			move.w	(a0),d0					; current music BPM
-;			cmp.w	.curBpm(pc),d0
-;			beq.s	.noChg
-;			lea		.curBpm(pc),a2			
-;			move.w	d0,(a2)					; current BPM
-;			move.l	.ciaClock(pc),d1
-;			divu.w	d0,d1
-;			move.b	d1,$bfd400
-;			lsr.w 	#8,d1
-;			move.b	d1,$bfd500			
-;.noChg:
-			
+			move.l	LSPInfos(pc),a0
+			move.w	(a0),d0					; current music BPM
+			cmp.w	LSPCurBpm(pc),d0
+			beq.s	.noChg
+			lea		LSPCurBpm(pc),a2
+			move.w	d0,(a2)					; current BPM
+			bsr		cia50HzInstall
+.noChg:
+			lea		LSP_DmaconIrq(pc),a0
+			move.l	a0,$78.w
+			move.b	#$19,$bfdf00			; start timerB, one shot
+	
 .noMusic:	bsr		trackLoaderTick
 
 			movem.l	(a7)+,d0-a6
 ;			move.w	#0,$dff180
-			nop
+.skipa:		nop
 			rte
-.pMusicBPM:	ds.l	0
+
+LSP_DmaconIrq:
+			move.w	#$2000,$dff09c
+			btst.b	#1,$bfdd00
+			beq.s	.skipb
+			move.w	LSPDmaCon(pc),$dff096
+			pea		ldos50Hz(pc)
+			move.l	(a7)+,$78.w
+.skipb:		nop
+			rte
 
 
 ispSet:		lea		.supervisor(pc),a0
@@ -894,6 +902,12 @@ cia50HzInstall:
 			move.b	d1,$500(a0)
 			move.b	#$83,$d00(a0)
 			move.b	#$11,$e00(a0)
+			
+			move.b	#496&255,$600(a0)		; set timer b to 496 ( to set DMACON )
+			move.b	#496>>8,$700(a0)
+
+			move.w 	#(1<<13),$dff09c		; clear any req CIA
+		
 			move.w 	#$e000,$dff09a	; CIA interrupt enabled
 			movem.l	(a7)+,d0-d1/a0
 			rts
@@ -1170,9 +1184,12 @@ diskOffset:			ds.l	1
 currentFile:		dc.w	0
 qVBL:				dc.l	0
 nextFx:				dc.l	0,0,0
-nextMusic:			dc.l	0,0,0
+LSMusic:			dc.l	0
+LSBank:				dc.l	0
+LSPInfos:			dc.l	0
+LSPCurBpm:			dc.w	0
+LSPDmaCon:			dc.w	$8000
 sectorOffset:		ds.w	1
-pModule:			dc.l	0
 bMusicPlay:			dc.w	0
 musicTick:			dc.l	0
 clockTick:			dc.l	0

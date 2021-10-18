@@ -2,9 +2,9 @@
 ; Size optimized
 ; Placed in public domain 1993-2007 Hans Wessels (Mr Ni! (the Great) of the TOS-crew)
 ;
-; void decode_m4(unsigned long origsize, char* depack_space, char* packed_data)
+; void decode_m4(unsigned short origsize, char* depack_space, char* packed_data)
 ; CALL:
-; D0 = origsize (long)
+; D0 = origsize (short)
 ; A0 = ptr to depack space
 ; A1 = ptr to packed data
 ;
@@ -28,17 +28,17 @@
 
 decode_m4:
 ;     movem.l D3-D7/A2-A3,-(a7) ; save registers
-     lea     0(A0,d0.l),A3   ; end address
+     lea     0(a0,d0.w),A3   ; end address
      moveq   #0,D7           ; bitcount = 0
 ;    move.w  A1,D3           ; remove if buffer is at even adress; for checking rbuf_current
 ; 	 btst    D7,D3           ; remove if buffer is at even adress; does readbuf_current point to an even address?	
 ;    beq.s   .cont           ; remove if buffer is at even adress; yes
 ;    addq.l  #1,A1           ; remove if buffer is at even adress;
 ;    moveq   #8,D7           ; remove if buffer is at even adress; 8 bits in subbitbuf
-.cont:
+;.cont:
 ;     move.l  -2(A1),D6       ; replace with move.w (A1),D6 if buffer is at even adress; fill bitbuf
 	 move.w (a1),d6
-     ror.l   D7,D6           ; remove if buffer is at even adress;
+;     ror.l   D7,D6           ; remove if buffer is at even adress;
 .count_loop:                 ; main depack loop
      move.w  D6,D1           ; evaluate most significant bit bitbuf
      bmi.s   .start_sld      ; =1 -> sliding dictionary
@@ -48,8 +48,9 @@ decode_m4:
 .eval_loop:
      cmp.l   A3,A0           ; end?
      bls.s   .count_loop     ;
-;     movem.l (a7)+,D3-D7/A2-A3 ;
-     rts                     ;
+
+		move.l	#$4afc4afc,d6	; disk offset|FAT size	(patched by LDOS installer)
+		rts						; jmp into depacked code
 
 .start_sld:
      moveq   #6,d4           ;
