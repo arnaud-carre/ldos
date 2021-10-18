@@ -1,4 +1,4 @@
-# <div align="center">LDOS (Leonard Demo Operating System)</div>
+# <div align="center">LDOS v1.30 (Leonard Demo Operating System)</div>
 
 ## Introduction
 LDOS is a framework to easily build Amiga multi-part demos. You can chain several amiga executable effects. LDOS is managing memory allocation, floppy disk loading, data depacking and image disk creation. LDOS also includes an HDD loader to run your demo from harddisk. LDOS toolchain is running on Windows platform.
@@ -8,7 +8,7 @@ LDOS is a framework to easily build Amiga multi-part demos. You can chain severa
 ## Demo sample
 LDOS repository also comes with a demo sample so you can see how to use LDOS in real life application. Just run demo/build.cmd to build the sample LDOS demo. It will produce "ldos_demo.adf" file. You can use it in any Amiga emulator or write on real floppy and test on real hardware.
 The sample demo is made of 3 files (look at demo/script.txt)
-1. parcade.p61 ( p61 music file )
+1. parcade.mod ( mod music file )
 2. Sprite loader: few animated sprites during the loading & depacking of the second part
 3. Greetings: large bitmap scroll (fun fact: this part is a conversion of Greetings part of Atari ["We Were @" demo](https://www.pouet.net/prod.php?which=66702) )
 
@@ -35,6 +35,7 @@ Each demo part should be a standard Amiga executable.
 * Generated demo is 1MiB RAM targeted ( with at least 512KiB of chip memory )
 * Use ARJ mode 7 packer
 * LDOS is loading & depacking at the same time. Most of demos are loading, then depacking. LDOS depacks while loading, so basically depacking time is free.
+* LDOS use Light Speed Player (fastest MOD player ever)
 * Just put all the exe of your demo in a script.txt and run ldos/bin/install ( look at demo/build.cmd script )
 * All files are automatically packed using Arj7, you don't have to worry about packing
 * LDOS also provides a fast LZ4 depacker function (LDOS_FAST_DEPACK) in case you want to depack some data yourself at runtime during a demo part
@@ -44,7 +45,7 @@ Each demo part should be a standard Amiga executable.
 
 * LDOS is written by Arnaud Carré aka Leonard/Oxygene ( [@leonard_coder](https://twitter.com/leonard_coder) )
 * ARJ depackers by Mr Ni! / TOS-crew
-* P61 music player by Photon/Scoopex
+* Light Speed Player by Leonard/Oxygene (https://github.com/arnaud-carre/LSPlayer)
 
 ## Amiga demos using LDOS
 LDOS is production ready :) Several Amiga demos are already powered by LDOS:
