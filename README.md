@@ -46,6 +46,7 @@ Each demo part should be a standard Amiga executable.
 * LDOS is written by Arnaud Carré aka Leonard/Oxygene ( [@leonard_coder](https://twitter.com/leonard_coder) )
 * ARJ depackers by Mr Ni! / TOS-crew
 * Light Speed Player by Leonard/Oxygene (https://github.com/arnaud-carre/LSPlayer)
+* LDOS v1.02 used P61 music player by Photon/Scoopex
 
 ## Amiga demos using LDOS
 LDOS is production ready :) Several Amiga demos are already powered by LDOS:
