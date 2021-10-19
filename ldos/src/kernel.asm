@@ -13,7 +13,7 @@
 
 _LVOOpenLib			=	-552
 
-		include	"kernel.inc"
+		include	"../kernel.inc"
 		include	"kernelPrivate.inc"
 
 
