@@ -38,8 +38,9 @@ Each demo part should be a standard Amiga executable.
 * LDOS use Light Speed Player (fastest MOD player ever)
 * Just put all the exe of your demo in a script.txt and run ldos/bin/install ( look at demo/build.cmd script )
 * All files are automatically packed using Arj7, you don't have to worry about packing
-* LDOS also provides a fast LZ4 depacker function (LDOS_FAST_DEPACK) in case you want to depack some data yourself at runtime during a demo part
-* fun fact: All data on the disk is packed except the bootsector. As boot code is pretty small, the rest of 1024 bytes bootblock is also used to store disk data
+* fun fact: All data on the disk is packed except the small bootblock code
+* LDOS bootblock is 292 bytes only and contains the only unpacked data of the disk. Packed data (including FAT) starts right after these 292 bytes
+* LDOS cluster size is 2 bytes only ( no 512 bytes waste per file :) )
 
 ## Credits
 
