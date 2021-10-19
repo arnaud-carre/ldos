@@ -45,8 +45,8 @@ struct  ldosFile
 	bool	LoadUserFile(const char* sFilename, int diskId, bool packing);
 	bool	LoadKernel(const ldosFatEntry* fat, int count);
 	bool	LoadBoot(const ldosFile& kernel, int count);
-	void	DisplayInfo(u32 diskOffset, int diskId) const;
-	u32		OutToDisk(u8* adfBuffer, u32 diskOffset, int diskId) const;
+	void	DisplayInfo(u32 diskOffset) const;
+	u32		OutToDisk(u8* adfBuffer, u32 diskOffset) const;
 	u8*		ArjDataExtract(const u8* arj, int method, u32& outSize);
 
 	ldosFileType	DetermineFileType(const char* sFilename);

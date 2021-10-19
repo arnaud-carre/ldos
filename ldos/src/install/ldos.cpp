@@ -221,7 +221,7 @@ bool	ldosFile::LoadBoot(const ldosFile& kernel, int count)
 	strcpy_s(sFilename, _MAX_PATH, sInstallPath);
 	strcat_s(sFilename, _MAX_PATH, "boot.bin");
 	bool ret = false;
-
+	m_diskId = 0;
 	m_data = rawFileLoad(sFilename, m_originalSize);
 	if (m_data)
 	{
@@ -248,6 +248,7 @@ bool	ldosFile::LoadKernel(const ldosFatEntry* fat, int count)
 	strcpy_s(sFilename, _MAX_PATH, sInstallPath);
 	strcat_s(sFilename, _MAX_PATH, "kernel.bin");
 	bool ret = false;
+	m_diskId = 0;
 
 	u32 kernelSize = 0;
 	m_data = rawFileLoad(sFilename, kernelSize);
@@ -382,7 +383,7 @@ void	ldosFatCreate(const ldosFile* files, int count, ldosFatEntry* out)
 	}
 }
 
-void	ldosFile::DisplayInfo(u32 diskOffset, int diskId) const
+void	ldosFile::DisplayInfo(u32 diskOffset) const
 {
 	// display infos
 	static const char* sTypes[kLSPMaxFileType] = 
@@ -392,13 +393,14 @@ void	ldosFile::DisplayInfo(u32 diskOffset, int diskId) const
 		"LSM",
 		"LSB",
 	};
-	printf("[%d]:$%06x [%s] %6d->%6d (%3d%%) (%s)\n", diskId, diskOffset, sTypes[int(m_type)], m_originalSize, m_packedSize, m_packingRatio, m_sName);
+	printf("[%d]:$%06x [%s] %6d->%6d (%3d%%) (%s)\n", m_diskId, diskOffset, sTypes[int(m_type)], m_originalSize, m_packedSize, m_packingRatio, m_sName);
 }
 
-u32	ldosFile::OutToDisk(u8* adfBuffer, u32 diskOffset, int diskId) const
+u32	ldosFile::OutToDisk(u8* adfBuffer, u32 diskOffset) const
 {
-	DisplayInfo(diskOffset, diskId);
-	memcpy(adfBuffer + diskOffset, m_packedData, m_packedSize);
+	DisplayInfo(diskOffset);
+	if ( diskOffset + m_packedSize <= kMaxAdfSize )
+		memcpy(adfBuffer + diskOffset, m_packedData, m_packedSize);
 	return m_packedSize;
 }
 
@@ -419,44 +421,44 @@ static void	BootSectorExec(u32* pW)
 static	bool	AdfExport(char* argv[], const ldosFile* files, int count, const ldosFile& boot, const ldosFile& kernel)
 {
 	bool ret = false;
-	int diskId = 0;
 	u8* adfBuffer = (u8*)malloc(kMaxAdfSize);
 	memset(adfBuffer, 0, kMaxAdfSize);
 
 	u32 diskOffset = 0;
-	diskOffset += boot.OutToDisk(adfBuffer, diskOffset, 0);
-	diskOffset += kernel.OutToDisk(adfBuffer, diskOffset, 0);
+	diskOffset += boot.OutToDisk(adfBuffer, diskOffset);
+	diskOffset += kernel.OutToDisk(adfBuffer, diskOffset);
 	for (int i = 0; i < count; i++)
+		diskOffset += files[i].OutToDisk(adfBuffer, diskOffset);
+
+	if (diskOffset <= kMaxAdfSize)
 	{
-		if (files[i].m_packedSize + diskOffset <= kMaxAdfSize)
+		printf("Disk contains %dKiB (%dbytes, %d free bytes)\n", (diskOffset + 1023) >> 10, diskOffset, kMaxAdfSize - diskOffset);
+		// round up to a floppy cylinder size
+		diskOffset = (diskOffset + 2 * 11 * 512 - 1)&(-2 * 11 * 512);
+		printf("ADF file round up to %d KiB\n", (diskOffset + 1023) >> 10);
+		BootSectorExec((u32*)adfBuffer);
+
+		printf("Generating ADF file \"%s\"...\n", argv[0]);
+		FILE* h;
+		if (0 == fopen_s(&h, argv[0], "wb"))
 		{
-			diskOffset += files[i].OutToDisk(adfBuffer, diskOffset, diskId);
+			fwrite(adfBuffer, 1, diskOffset, h);
+			fclose(h);
+			ret = true;
 		}
 		else
 		{
-			files[i].DisplayInfo(diskOffset, diskId);
-			printf("FATAL ERROR: Does not fit on the DISK!\n");
-			return false;
+			printf("ERROR: Unable to create ADF file \"%s\"\n", argv[0]);
 		}
-	}
-
-	// round up to a floppy cylinder size
-	diskOffset = (diskOffset + 2 * 11 * 512 - 1)&(-2 * 11 * 512);
-	BootSectorExec((u32*)adfBuffer);
-
-	printf("Generating ADF file \"%s\"...\n", argv[0]);
-	FILE* h;
-	if (0 == fopen_s(&h, argv[0], "wb"))
-	{
-		fwrite(adfBuffer, 1, diskOffset, h);
-		fclose(h);
-		printf("Total disk size: %d bytes (%dKiB)\n", diskOffset, (diskOffset + 1023) >> 10);
-		ret = true;
 	}
 	else
 	{
-		printf("ERROR: Unable to create ADF file \"%s\"\n", argv[0]);
+		const u32 overrun = diskOffset - kMaxAdfSize;
+		printf("FATAL ERROR: %d bytes does not fit on the DISK!\n( %d bytes overrun! )\n",diskOffset, overrun);
+		return false;
 	}
+
+
 	return ret;
 }
 
