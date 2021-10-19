@@ -369,8 +369,20 @@ installCopperList:
 			move.l	d0,a0
 			rts
 		
-musicStop:
-			
+musicStop:	lea		bMusicPlay(pc),a0
+			clr.w	(a0)
+			lea		$dff000,a0
+			move.w	#$000f,$96(a0)
+			moveq	#0,d0
+			move.w	d0,$a8(a0)
+			move.w	d0,$b8(a0)
+			move.w	d0,$c8(a0)
+			move.w	d0,$d8(a0)
+		; free music memory
+			moveq	#MEMLABEL_MUSIC_LSM,d0
+			bsr		freeMemLabel
+			moveq	#MEMLABEL_MUSIC_LSB,d0
+			bsr		freeMemLabel			
 			rts
 
 musicGetTick:
@@ -567,7 +579,7 @@ nextEXEDoAlloc:
 		move.l	d1,d0				; unpacked size
 		addi.l	#DEPACK_IN_PLACE_MARGIN,d0
 		
-		btst	#0,(nextFx+m_flags+1)(pc)				; bit 0 means "music". Try to directly load in CHIP if music file
+		btst.b	#kLDOSLsBankFile,(nextFx+m_flags+1)(pc)	; Try to directly load in CHIP if music file
 		beq.s	.normal
 
 		move.l	d0,-(a7)

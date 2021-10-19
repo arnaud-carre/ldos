@@ -28,10 +28,12 @@ LDOS_ASSERT					=	1*4
 LDOS_MUSIC_START			=	2*4
 
 ; Get LSP music frame tick 
+; Use this counter if you want to sync gfx with music
 ; returns d0.l: music frame tick
 LDOS_MUSIC_GET_TICK 		=	3*4
 
 ; Stop music playing
+; Note: This also free music memory (so music won't play again if you LDOS_MUSIC_START)
 LDOS_MUSIC_STOP				=	4*4
 
 ; Check if demo disk 2 is inserted or not
