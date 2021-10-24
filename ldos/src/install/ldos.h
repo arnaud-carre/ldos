@@ -40,6 +40,8 @@ struct  ldosFile
 		m_packedData = NULL;
 		m_sName = NULL;
 		m_type = kUnknownRawBinary;
+		m_chipSize = 0;
+		m_fakeSize = 0;
 	}
 
 	bool	LoadUserFile(const char* sFilename, int diskId, bool packing);
@@ -61,5 +63,7 @@ struct  ldosFile
 	u32		m_packedSize;
 	int		m_packingRatio;
 	int		m_packingMethod;
+	int		m_chipSize;
+	int		m_fakeSize;
 	ldosFileType	m_type;
 };

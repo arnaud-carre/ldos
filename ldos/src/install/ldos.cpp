@@ -177,6 +177,31 @@ void	ldosFile::Release()
 	m_type = kUnknownRawBinary;
 }
 
+
+static void	amigaExeGetMemoryLayout(const u32* data, int& outChip, int& outFake)
+{
+
+	outChip = 0;
+	outFake = 0;
+	assert(bswap32(data[0]) == 0x3f3);
+	if (0 == bswap32(data[1]))
+	{
+		int hunkCount = bswap32(data[2]);
+		data += 5;		// skip first and last hunk
+		for (int i = 0; i < hunkCount; i++)
+		{
+			u32 v = bswap32(data[0]);
+			int size = (v & 0x00ffffff) << 2;		// size in bytes
+			if (v & (1 << 30))
+				outChip += size;
+			else
+				outFake += size;
+			data++;
+		}
+	}
+}
+
+
 ldosFileType	ldosFile::DetermineFileType(const char* sFilename)
 {
 	ldosFileType ret = kUnknownRawBinary;
@@ -184,9 +209,16 @@ ldosFileType	ldosFile::DetermineFileType(const char* sFilename)
 	{
 		const u32* r = (const u32*)m_data;
 		if (0x3f3 == bswap32(r[0]))
+		{
+			amigaExeGetMemoryLayout(r, m_chipSize, m_fakeSize);
 			ret = kAmigaExeFile;
+
+		}
 		else if ('LSP1' == bswap32(r[0]))
+		{
 			ret = kLSPMusicScore;
+			m_fakeSize = m_originalSize;
+		}
 		else
 		{
 			char fExt[_MAX_EXT];
@@ -194,6 +226,7 @@ ldosFileType	ldosFile::DetermineFileType(const char* sFilename)
 			if (0 == _stricmp(fExt, ".lsbank"))
 			{
 				ret = kLSPMusicBank;
+				m_chipSize = m_originalSize;
 			}
 		}
 	}
@@ -260,6 +293,7 @@ bool	ldosFile::LoadKernel(const ldosFatEntry* fat, int count)
 		memcpy(m_data + kernelSize, fat, count * sizeof(ldosFatEntry));
 		ret = ArjPack(4);		// LDOS kernel is packed using arj m4
 		m_sName = _strdup("kernel.bin");
+		m_fakeSize = m_originalSize;
 	}
 	return ret;
 }
@@ -393,7 +427,7 @@ void	ldosFile::DisplayInfo(u32 diskOffset) const
 		"LSM",
 		"LSB",
 	};
-	printf("[%d]:$%06x [%s] %6d->%6d (%3d%%) (%s)\n", m_diskId, diskOffset, sTypes[int(m_type)], m_originalSize, m_packedSize, m_packingRatio, m_sName);
+	printf("[%d]:$%06x [%s] Packing %6d->%6d (%3d%%) Chip:%3dKiB Fake:%3dKiB  (%s)\n", m_diskId, diskOffset, sTypes[int(m_type)], m_originalSize, m_packedSize, m_packingRatio, (m_chipSize + 1023) >> 10, (m_fakeSize + 1023) >> 10, m_sName);
 }
 
 u32	ldosFile::OutToDisk(u8* adfBuffer, u32 diskOffset) const
