@@ -1,6 +1,6 @@
 ;*****************************************************************
 ;
-;	Light Speed Player v1.04
+;	Light Speed Player v1.05
 ;	Fastest Amiga MOD player ever :)
 ;	Written By Arnaud Carré (aka Leonard / OXYGENE)
 ;	https://github.com/arnaud-carre/LSPlayer
@@ -21,7 +21,7 @@
 ;
 ;	bsr LSP_MusicDriver+4 : LSP player tick (call once per frame)
 ;		In:	a6: should be $dff0a0
-;			Used regs: d0/d1/a0/a1/a2/a3/a4
+;			Scratched regs: d0/d1/d2/a0/a1/a2/a3/a4/a5
 ;		Out:None
 ;
 ;*****************************************************************
@@ -135,8 +135,8 @@ LSP_MusicDriver:
 			bne.s	.dataError
 
 			lea		.LSPVars(pc),a3
-			cmpi.w	#$0104,(a0)+			; major & minor version of LSP
-			bne.s	.dataError
+			cmpi.w	#$0104,(a0)+			; minimal major & minor version of latest compatible LSPConvert.exe
+			blt.s	.dataError
 			move.w	(a0)+,m_currentBpm(a3)	; default BPM
 			move.w	(a0)+,m_escCodeRewind(a3)
 			move.w	(a0)+,m_escCodeSetBpm(a3)
@@ -182,13 +182,13 @@ m_byteStream:		rs.l	1	;  0 byte stream
 m_wordStream:		rs.l	1	;  4 word stream
 m_dmaconPatch:		rs.l	1	;  8 m_lfmDmaConPatch
 m_codeTableAddr:	rs.l	1	; 12 code table addr
-m_escCodeRewind:	rs.w	1
-m_escCodeSetBpm:	rs.w	1
-m_lspInstruments:	rs.l	1	; 16 LSP instruments table addr
-m_relocDone:		rs.w	1	; 20 reloc done flag
-m_currentBpm:		rs.w	1	; 22 current BPM
-m_byteStreamLoop:	rs.l	1	; 24 byte stream loop point
-m_wordStreamLoop:	rs.l	1	; 28 word stream loop point
+m_escCodeRewind:	rs.w	1	; 16 rewind special escape code
+m_escCodeSetBpm:	rs.w	1	; 18 set BPM escape code
+m_lspInstruments:	rs.l	1	; 20 LSP instruments table addr
+m_relocDone:		rs.w	1	; 24 reloc done flag
+m_currentBpm:		rs.w	1	; 26 current BPM
+m_byteStreamLoop:	rs.l	1	; 28 byte stream loop point
+m_wordStreamLoop:	rs.l	1	; 32 word stream loop point
 sizeof_LSPVars:		rs.w	0
 
 .LSPVars:	ds.b	sizeof_LSPVars
