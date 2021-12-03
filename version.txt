@@ -1,3 +1,7 @@
+LDOS 1.30
+	- now LDOS supports Light Speed Player module replay
+	- LDOS kernel public functions cleanup
+	- big installer code cleanup
 
 LDOS 1.02
 	- first public release

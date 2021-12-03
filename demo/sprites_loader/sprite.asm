@@ -29,8 +29,6 @@ Dp4			=		40*2
 
 		include "../../ldos/kernel.inc"
 
-			move.l	(LDOS_BASE).w,a6
-			jsr		LDOS_MUSIC_START(a6)
 
 			bsr		blitterWait
 
@@ -50,6 +48,8 @@ Dp4			=		40*2
 			move.w	#$8000|(1<<6)|(1<<7)|(1<<8)|(1<<10),$dff096	; Blitter, Copper, Bitplans, Nasty Bit
 			move.w	#$c000|(1<<4),$dff09a		;interruption copper
 
+			move.l	(LDOS_BASE).w,a6
+			jsr		LDOS_MUSIC_START(a6)
 
         ; music is loaded, we now load & depack the next part ( simple scroll text to demonstrate )
 			move.l	(LDOS_BASE).w,a6

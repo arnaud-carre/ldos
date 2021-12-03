@@ -110,7 +110,7 @@ debugScreenSetup:
 		bsr		installCopperList
 		bsr		clearSprites
 
-		move.w	#$8000 | (1<<9) | (1<<8) | (1<<7),$dff096			; bitplan + copper
+		move.w	#$8000|(1<<9)|(1<<8)|(1<<7),$dff096			; bitplan + copper
 		move.w	d0,$dff088
 
 		move.l	dbgBss(pc),a6

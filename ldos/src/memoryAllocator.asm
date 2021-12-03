@@ -8,11 +8,6 @@
 ;	Memory Allocator
 ;
 ;---------------------------------------------------------
-
-
-
-		include	"kernelPrivate.inc"
-
 		
 memoryCrcStart:	
 
@@ -131,7 +126,7 @@ allocAnyMemCopy:
 		bsr		allocAnyMem
 		move.l	d0,a1			; dst ad
 		move.l	(a7)+,d0		; original size, a0=src is preserved
-		bsr		fastMemcpy
+		bsr		fastMemMove
 		move.l	a1,d0
 		move.l	(a7)+,a1
 		rts
@@ -147,7 +142,7 @@ allocChipMemCopy:
 		bsr		allocChipMem
 		move.l	d0,a1			; dst ad
 		move.l	(a7)+,d0		; original size, a0=src is preserved
-		bsr		fastMemcpy
+		bsr		fastMemMove
 		move.l	a1,d0
 		move.l	(a7)+,a1
 		rts
@@ -243,15 +238,13 @@ freeMemLabel:
 freeMemLabelExt:
 		move.l	(a0)+,a1		; base
 	IF MEM_ALLOCATOR_DEBUG
-	{
 		move.l	#$cdcdcdcd,d2
-	}
+	ENDC
 		move.w	#MEMPAGE_COUNT-1,d1
 .loop:	cmp.b	(a0)+,d0
 		bne.s	.next
 		clr.b	-1(a0)
 	IF MEM_ALLOCATOR_DEBUG
-	{
 		move.w	#MEMPAGE_SIZE/16-1,d3
 		movea.l	a1,a2
 .clear:	move.l	d2,(a2)+
@@ -259,7 +252,7 @@ freeMemLabelExt:
 		move.l	d2,(a2)+
 		move.l	d2,(a2)+
 		dbf		d3,.clear
-	}
+	ENDC
 .next:	lea		MEMPAGE_SIZE(a1),a1
 		dbf		d1,.loop
 		rts

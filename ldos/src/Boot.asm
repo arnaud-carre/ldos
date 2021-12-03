@@ -26,12 +26,12 @@ bootStart:
 	dc.l 880			; 8
 	bra.s	start0		; 12
 	dc.b	'  '
-	dc.b	'-LDOS v1.2 by Le'
-	dc.b	'onard/OXYGENE-  '
+;	dc.b	'0123456789abcdef'
+	dc.b	'LDOS v1.30 Amiga'
+	dc.b	'-Leonard/OXYGENE'
 	even
 	
 start0:
-	
 		lea		-m_sizeOf(a7),a7
 		move.l	a1,m_originalA1(a7)
 
@@ -60,33 +60,26 @@ start0:
 		move.l	m_originalA1(a7),a1
 		move.w	#2,$1c(a1)		; read cmd
 		move.l	a0,$28(a1)		; load ad
-		move.w	#$4afc,d0		; sector count (4afc is patched by the installer)
-		mulu.w	#512,d0
-		move.l	d0,$24(a1)		; size in bytes
+		move.l	#$00004afc,$24(a1)		; size to load in bytes (4afc is patched by the installer)
 		clr.l	$2c(a1)  		; start offset
 		jsr		-456(a6)		; run IO command
 
-		move.l	m_buffer(a7),a0
-		lea		24*1024(a0),a1
+		move.l	m_buffer(a7),a1
+		lea		31*1024(a1),a0
 
 		clr.l	m_hddBuffer1(a7)
 
 	; WARNING: do NOT remove this NOP. hdd_loader.exe jump here at the NOP place
 	nop
 	
-	lea		(kernelStart-bootStart)(a0),a0
-	pea		(a1)
+	lea		(kernelStart-bootStart)(a1),a1
+	pea		(a0)
 	
-	bsr.s	decode
-	move.w	#$4afc,d6		; disk offset		(4AFC is patched by installer)
-	move.w	#$4afc,d7		; FAT size			(4AFC is patched by installer)
-	rts
 ; ------------------------------------------
-; packed data in a0
-; dest in a1
+; packed data in a1
+; dest in a0
 decode:
-		move.l	(a0)+,d0				; original size
-		exg		a0,a1
+		move.w	(a1)+,d0				; original size
 		include "arj_m4.asm"
 
 kernelStart:

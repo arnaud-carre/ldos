@@ -13,23 +13,23 @@
 
 _LVOOpenLib			=	-552
 
-		include	"kernel.inc"
+		include	"../kernel.inc"
 		include	"kernelPrivate.inc"
 
 
 ; come from boot sector
-; d6 = disk offset
-; d7 = fat size
+; d6 = disk offset|FAT size
 
 ; NOTE: here the AMIGA system is still running. We use amiga OS to get memory configuration.
 ;		After that, we kill everything, relocate and run our own OS ( from kernelStart to kernelEnd )
 
 entry:
-		lea		diskOffset(pc),a0
-		ext.l	d6
-		move.l	d6,(a0)
 		lea		fatSize(pc),a0
-		move.w	d7,(a0)
+		move.w	d6,(a0)
+		lea		diskOffset(pc),a0
+		clr.w	d6
+		swap	d6
+		move.l	d6,(a0)
 
 	; switch off cache using system call if ROM > 37
 		move.l	$4.w,a6
@@ -69,14 +69,16 @@ entry:
 
 	; Now we don't need system anymore
 	; switch off all interrupts
-		move.w	#$7fff,$dff096		;desactive tous les DMA
-		move.w	#$7fff,$dff09a		;desactive toutes les ITs
-		move.w	#$7fff,$dff09c
-		move.w	#$7fff,$dff09e
-		
+		lea		$dff000,a6
+		move.w	#$7fff,d0
+		move.w	d0,$96(a6)		;desactive tous les DMA
+		move.w	d0,$9a(a6)		;desactive toutes les ITs
+		move.w	d0,$9c(a6)
+		move.w	d0,$9e(a6)
+
 	; clear sprites
 		bsr	clearSprites
-		
+
 	; store HDD version buffers
 		move.l	m_hddBuffer1(a7),(SVAR_HDD_BUFFER).w
 		move.l	m_hddBuffer2(a7),(SVAR_HDD_BUFFER2).w
@@ -156,17 +158,13 @@ entry:
 		move.l	pUserStack(pc),a7					; set user stack
 		bsr		ispSet								; bug fixed! Set ISP before relocating kernel
 
-		move.l	pKernelBase(pc),a1		
-		pea		(a1)
 		lea		kernelStart(pc),a0
+		move.l	pKernelBase(pc),a1
+		moveq	#0,d0
 		move.w	#(kernelEnd-kernelStart),d0
 		add.w	fatSize(pc),d0
-		lsr.w	#1,d0
-		subq.w	#1,d0
-copy:	move.w	(a0)+,(a1)+
-		dbf		d0,copy
-		
-		rts						; jump to kernel base relocated
+		bsr		fastMemMove
+		jmp		(a1)						; jump to kernel base relocated
 
 align128:
 		move.l	(a0),d0					; start
@@ -237,30 +235,23 @@ mainDemoLoop:
 		
 		bra.s	mainDemoLoop
 		
+			opt o-		; switch off ALL optimizations (we really want these bra to be 4bytes )
 
 kernelLibrary:
 			bra.w	userLoadNextFile
-			bra.w	vSync
-			bra.w	installVBlank
-			bra.w	batchAllocator
-			bra.w	installCopperList
-			bra.w	lz4_frame_depack
-			bra.w	getFrameCounter
 			bra.w	assertVector
 			bra.w	musicStart
-			bra.w	musicPlayer+12			; music get info
+			bra.w	musicGetTick			; music get info
 			bra.w	musicStop				; music stop (with fade out)
 			bra.w	isDisk2Inserted
 			bra.w	persistentAlloc
 			bra.w	persistentGet
 			bra.w	persistentTrash
-			bra.w	cia50HzInstall
-			bra.w	freeMemoryArea
-			bra.w	musicPlayer+20			; music set position
 			bra.w	loadBinaryBlob
 			bra.w	getEntropy
 			bra.w	trackLoaderTick
 			
+			opt o+		; enable
 			
 persistentAlloc:
 			movem.l	a0,-(a7)
@@ -290,8 +281,6 @@ persistentTrash:
 			
 userLoadNextFile:
 			bsr		loadNextFile
-		; if current FX is still doing allocation when PRELOAD returns, it's marked as "USER_FX"
-			move.b	#MEMLABEL_USER_FX,(SVAR_CURRENT_MEMLABEL).w
 			rts
 			
 			
@@ -304,38 +293,23 @@ runLoadedFile:
 			moveq	#MEMLABEL_PRECACHED_FX,d0
 			bsr		unmarkMemLabel
 
-		; first of all, maybe a MUSIC is already loaded, so reloc it
-			move.l	(nextMusic+m_ad)(pc),d0
-			beq.s	.noMusic
-			
-			bsr		relocP61
-
-			lea		nextMusic(pc),a0
-			clr.l	m_ad(a0)
-
-.noMusic:				
-
-		; from here, the memory used for the cached file is marked as "FREE"
-		; all next "alloc" will return pointers "lower", but may overlap.
-			move.b	#MEMLABEL_USER_FX,(SVAR_CURRENT_MEMLABEL).w		; all new alloc will now be part of the "FX to be run"
-
 		; Proceed and reloc loaded data ( exe, module, etc)
-			move.l	(nextFx+m_ad)(pc),a0
-			cmpi.l	#'LEOR',4(a0)
-			bne.s	.noAs68
-
-			bsr		leonardReloc		; reloc leonard as68 reloc simple table
-			bra.s	.next
-
-.noAs68:	cmpi.l	#$3f3,(a0)
-			bne.s	.noAmiga
-
+			move.w	(nextFx+m_flags)(pc),d0
+			btst	#kLDOSExeFile,d0
+			beq.s	.noExe
 			bsr		amigaReloc			; AMIGA exe relocation routine + move memory down for fragmentation
 			bra.s	.next
+.noExe:		btst	#kLDOSLsMusicFile,d0
+			beq.s	.noLsMusic
+			bsr		relocLSMusic
+			bra.s	.next
 
-.noAmiga:	
+.noLsMusic:	btst	#kLDOSLsBankFile,d0
+			beq.s	.noLsBank
+			bsr		relocLSBank
+			bra.s	.next
 
-			lea		.txtUnknowFile(pc),a0
+.noLsBank:	lea		.txtUnknowFile(pc),a0
 			trap	#0
 
 .next:		lea		(nextFx+m_ad)(pc),a0
@@ -347,11 +321,11 @@ runLoadedFile:
 			addq.w	#1,(a0)	
 
 		; get the kernel CRC
-IF _DEBUG
-{
+	IF _DEBUG
+
 			moveq	#-1,d0
 			bsr		crcCompute
-}
+	ENDC
 
 		; call the FX code
 			cmpa.l	#0,a1
@@ -365,11 +339,10 @@ IF _DEBUG
 .noExec:
 
 		; back from the FX: we should restore kernel state
-IF _DEBUG
-{
+	IF _DEBUG
 			moveq	#0,d0
 			bsr		crcCompute
-}
+	ENDC
 			bsr		systemInstall		
 
 		; Free all memory of previous FX
@@ -396,40 +369,58 @@ installCopperList:
 			move.l	d0,a0
 			rts
 		
-musicStop:
-			move.l	#64<<8,d1
-			lea		fadeOutValue(pc),a0
-			move.w	d1,(a0)
-			tst.w	d0
-			beq.s	.imm
-			divu.w	d0,d1
-.imm:		lea		fadeOutStep(pc),a0
-			move.w	d1,(a0)
+musicStop:	lea		bMusicPlay(pc),a0
+			clr.w	(a0)
+			lea		$dff000,a0
+			move.w	#$000f,$96(a0)
+			moveq	#0,d0
+			move.w	d0,$a8(a0)
+			move.w	d0,$b8(a0)
+			move.w	d0,$c8(a0)
+			move.w	d0,$d8(a0)
+		; free music memory
+			moveq	#MEMLABEL_MUSIC_LSM,d0
+			bsr		freeMemLabel
+			moveq	#MEMLABEL_MUSIC_LSB,d0
+			bsr		freeMemLabel			
 			rts
-	
 
-musicStart:
-			move.l	pModule(pc),d0
+musicGetTick:
+			move.l	musicTick(pc),d0
+			rts
+
+musicStart:	
+			lea		bMusicPlay(pc),a0
+			tst.w	(a0)
+			bne.s	.errm
+			move.l	LSMusic(pc),d0
 			beq.s	.skip
+			move.l	LSBank(pc),d1
+			beq.s	.skip
+
+			move.l	d0,a0
+			move.l	d1,a1
+			lea		LSPDmaCon+1(pc),a2
+			bsr		LSP_MusicDriver
+			lea		LSPInfos(pc),a1
+			move.l	a0,(a1)
+
+			lea		LSPCurBpm(pc),a2
+			move.w	(a0),d0
+			move.w	d0,(a2)					; current BPM
+			bsr		cia50HzInstall
+
+			lea		musicTick(pc),a0
+			clr.l	(a0)
 			lea		bMusicPlay(pc),a0
 			move.w	#-1,(a0)
 .skip:		rts
-			
-		
-getFrameCounter:
-			bsr		checkCustomVbl
-			move.w	(SVAR_VBL_COUNT).w,d0
-			rts
-		
-vSync:		
-			bsr		checkCustomVbl
-			move.w	d0,-(a7)
-			move.w	(SVAR_VBL_COUNT).w,d0
-.sync:		cmp.w	(SVAR_VBL_COUNT).w,d0
-			beq.s	.sync
-			move.w	(a7)+,d0
-			rts
 						
+.errm:		lea		.txt(pc),a0
+			trap	#0
+.txt:		dc.b	"musicStart called while music is playing",0
+			even
+
 ; wait 64 raster lines (about 4ms in PAL)
 wait4ms:	move.w	d0,-(a7)
 			move.w	#63,d0
@@ -467,12 +458,17 @@ checkCustomVbl:
 				rts
 .txt:			dc.b	"VBLANK function called but",10,"custom $6c installed",0
 				even
-			
+
+
 ; a0: src ( aligned on 2 )
 ; a1: dst ( aligned on 2 )
 ; d0.l: size ( aligned on 2 )
-fastMemcpy:	cmpa.l	a0,a1
+fastMemMove:
+			cmpa.l	a0,a1
 			beq		.useless
+			bgt		memMoveMinus
+
+.memMovePlus:
 			movem.l	d0-d7/a0-a2,-(a7)
 			move.w	d0,-(a7)
 			lsr.l	#7,d0
@@ -500,6 +496,38 @@ fastMemcpy:	cmpa.l	a0,a1
 
 .over:		movem.l	(a7)+,d0-d7/a0-a2
 .useless:	rts
+
+memMoveMinus:
+			movem.l	d0-d7/a0-a2,-(a7)
+			add.l	d0,a0
+			add.l	d0,a1
+			move.w	d0,-(a7)
+			lsr.l	#7,d0
+			beq.s	.reminder
+
+			subq.w	#1,d0				; should fit in 15bits for the DBF
+.copy:		lea		-32*4(a0),a0
+			movem.l	32*3(a0),d1-d7/a2
+			movem.l	d1-d7/a2,-(a1)
+			movem.l	32*2(a0),d1-d7/a2
+			movem.l	d1-d7/a2,-(a1)
+			movem.l	32*1(a0),d1-d7/a2
+			movem.l	d1-d7/a2,-(a1)
+			movem.l	(a0),d1-d7/a2
+			movem.l	d1-d7/a2,-(a1)
+			dbf		d0,.copy
+
+.reminder:	moveq	#127,d0
+			and.w	(a7)+,d0		; reminder on 128 bytes
+			lsr.w	#1,d0
+			beq.s	.over
+			subq.w	#1,d0
+.cloop:		move.w	-(a0),-(a1)
+			dbf		d0,.cloop
+
+.over:		movem.l	(a7)+,d0-d7/a0-a2
+			rts
+
 
 ; a0: dst ( aligned on 2 )
 ; d0.l: size in bytes ( aligned on 2 )
@@ -551,7 +579,7 @@ nextEXEDoAlloc:
 		move.l	d1,d0				; unpacked size
 		addi.l	#DEPACK_IN_PLACE_MARGIN,d0
 		
-		btst	#0,(nextFx+m_flags+1)(pc)				; bit 0 means "music". Try to directly load in CHIP if music file
+		btst.b	#kLDOSLsBankFile,(nextFx+m_flags+1)(pc)	; Try to directly load in CHIP if music file
 		beq.s	.normal
 
 		move.l	d0,-(a7)
@@ -619,7 +647,7 @@ loadFile:
 			lea		nextEXEAllocs(pc),a0
 			move.l	#MFM_DMA_SIZE,(a0)+
 			move.l	#MFM_DMA_SIZE,(a0)+
-			move.l	#13320 | LDOS_MEM_ANY_RAM,(a0)+
+			move.l	#13320|LDOS_MEM_ANY_RAM,(a0)+
 			lea		nextEXEAllocs(pc),a0
 			bsr		batchAllocator
 
@@ -662,6 +690,7 @@ loadFile:
 			move.l	d1,d0			; packed block size to alloc
 
 			move.l	m_size(a6),d1	; depacked block size to alloc
+
 			bsr		nextEXEDoAlloc
 			
 			move.l	nextEXEDepacked(pc),m_ad(a6)
@@ -672,13 +701,13 @@ loadFile:
 			
 		; start trackloader !!
 			bsr		trackLoadStart
-					
+
 		; now loading is running async, we could alloc a mem block for depacked data
 		; and run the depacker in the main thread (depacker takes care or loading ptr)		
 			move.l	(a7)+,a1
 			add.w	sectorOffset(pc),a1		; packed data ad
 			move.l	m_ad(a6),a0
-		
+
 		; run the depacker (packed data are loading async)
 			bsr		mainThreadDepack
 
@@ -687,7 +716,7 @@ loadFile:
 			bsr		freeMemLabel
 
 			rts
-		
+
 ;-----------------------------------------------------------------		
 loadNextFile:
 			move.l	(nextFx+m_ad)(pc),d0
@@ -696,44 +725,8 @@ loadNextFile:
 			move.w	currentFile(pc),d0
 			bsr		loadFile
 
-		; Special case: check if we have a music file
-		; in that case, store music pointer & size, and preload the next file (FX)
-			bsr		isMusicFile
-			tst.w	d0
-			beq		.noMusic
-
-		; music file, store pointers for next run
-			movem.l	nextFx(pc),d0-d2		; m_ad, m_size, m_arg
-			lea		nextMusic(pc),a0
-			movem.l	d0-d2,(a0)
-			
-			lea		currentFile(pc),a0
-			addq.w	#1,(a0)
-			move.w	(a0),d0
-			bsr		loadFile
-			
-.noMusic:
 			rts
 
-
-isMusicFile:
-			moveq	#0,d0				; not a music file by default
-			lea		nextFx(pc),a0
-			move.l	m_ad(a0),a0
-			cmpi.l	#'LEOR',4(a0)
-			beq		.over
-
-			cmpi.l	#$3f3,(a0)
-			beq		.over
-
-			moveq	#-1,d0				; by default, everything that is NOT a EXE ( amiga EXE or AS68 exe) is supposed to be a music
-										; (because p61 module does not have specific signature :( )
-.over:	
-			rts
-			
-			
-			
-		
 vblSystem:	btst	#5,$dff01f
 			beq		unknownInterrupt
 			move.l	d0,-(a7)
@@ -778,70 +771,73 @@ unknownInterrupt:
 		
 		
 ldos50Hz:	
-;			move.w	#$ff0,$dff180
-			tst.b	$bfdd00
 			move.w	#$2000,$dff09c
 			move.w	#$2000,$dff09c
+			btst.b	#0,$bfdd00
+			beq.s	.skipa
 
 			movem.l	d0-a6,-(a7)
 			move.w	bMusicPlay(pc),d0
 			beq.s	.noMusic
-			
-			; handle fade-out
-			lea		fadeOutStep(pc),a0
-			move.w	(a0),d0
-			beq.s	.fadeOver
-			lea		fadeOutValue(pc),a1
-			move.w	(a1),d1
-			sub.w	d0,d1
-			bgt.s	.ok
-			moveq	#0,d1
-			move.w	d1,(a0)
-			lea		bMusicPlay(pc),a0
-			clr.w	(a0)
-.ok:		move.w	d1,(a1)
-			lsr.w	#8,d1
-			move.w	d1,d0
-			bsr		musicPlayer+16			; music set volume			
-.fadeOver:
-			
-			bsr		musicPlayer+8
+
+			lea		$dff0a0,a6
+			bsr		LSP_MusicDriver+4
+
+			lea		musicTick(pc),a0
+			addq.l	#1,(a0)
+
+			; check if BMP changed in the middle of the music
+			move.l	LSPInfos(pc),a0
+			move.w	(a0),d0					; current music BPM
+			cmp.w	LSPCurBpm(pc),d0
+			beq.s	.noChg
+			lea		LSPCurBpm(pc),a2
+			move.w	d0,(a2)					; current BPM
+			bsr		cia50HzInstall
+.noChg:
+			lea		LSP_DmaconIrq(pc),a0
+			move.l	a0,$78.w
+			move.b	#$19,$bfdf00			; start timerB, one shot
+	
 .noMusic:	bsr		trackLoaderTick
 
 			movem.l	(a7)+,d0-a6
 ;			move.w	#0,$dff180
-			nop
+.skipa:		nop
 			rte
 
-			
-			
-			
-ispSet:		move.l	(a7)+,a6		; return ad
-			lea		.supervisor(pc),a0
+LSP_DmaconIrq:
+			move.w	#$2000,$dff09c
+			btst.b	#1,$bfdd00
+			beq.s	.skipb
+			move.w	LSPDmaCon(pc),$dff096
+			pea		ldos50Hz(pc)
+			move.l	(a7)+,$78.w
+.skipb:		nop
+			rte
+
+
+ispSet:		lea		.supervisor(pc),a0
 			move.l	a0,$80.w
 			trap	#0
-.supervisor:
-		; set SSP
-			move.l	pSuperStack(pc),a7
-			move.w	#0,sr					; back to user mode
-			jmp		(a6)
-			
-			
-			
-		
-vectorSet:	
-;			move.w	#$7fff,$dff096
-;			move.w	#$7fff,$dff09a
-;			move.w	#$7fff,$dff09c
-			
-			move.l	(a7)+,a6		; return ad
+			rts
 
+.supervisor:
+			; set SSP
+			move.l	pSuperStack(pc),a0
+			move.l	2(a7),-(a0)
+			move.w	(a7),-(a0)
+			move.l	a0,a7
+			rte
+
+vectorSet:				
 			; set both user & supervisor stack
 			lea		.supervisor(pc),a0
 			move.l	a0,$80.w
 			trap	#0
-.supervisor:
+			rts			
 
+.supervisor:
 		; Set all suspicious interrupts to RTE intruction
 			move.w	#$2700,sr				; disable any 68k interrupt		
 			lea		unRTE(pc),a1
@@ -850,9 +846,6 @@ vectorSet:
 			cmpa.l	#$f0,a0
 			bne.s	.fill
 			
-		; back to user land
-			move.w	#0,sr					; back to user mode
-
 			moveq	#($30-$8)/4-1,d0
 			lea		guruBootStrap(pc),a0
 			lea		$8.w,a1
@@ -861,8 +854,7 @@ vectorSet:
 			dbf		d0,.set
 			lea		assertVector(pc),a0
 			move.l	a0,$80.w
-			
-			jmp		(a6)				; rts
+			rte					; back to user land
 
 			
 pollVSync:	btst	#0,$dff005
@@ -890,7 +882,7 @@ systemInstall:
 			lea		copperListData(pc),a0
 			bsr		installCopperList
 			move.w	d0,$dff088					; start copper
-			move.w	#$8000 | (1<<7),$dff096		; switch ON COPPER DMA
+			move.w	#$8000|(1<<7),$dff096		; switch ON COPPER DMA
 
 			bsr.s	pollVSync
 			move.w	#(1<<5)|(1<<7),$dff096					; switch OFF Sprite DMA & copper
@@ -901,8 +893,8 @@ systemInstall:
 			clr.l	(a0)
 			lea		vblSystem(pc),a0
 			move.l	a0,$6c.w
-			move.w	#$8000 | (1<<4) | (1<<9),$dff096		; DMA disk enabled
-			move.w	#$c000 | (1<<5),$dff09a		; Enable IRQ3 (vbl)
+			move.w	#$8000|(1<<4)|(1<<9),$dff096		; DMA disk enabled
+			move.w	#$c000|(1<<5),$dff09a		; Enable IRQ3 (vbl)
 
 			rts
 			
@@ -910,7 +902,7 @@ cia50HzInstall:
 		; install 50Hz CIA TimerA for LDOS_TICK (& music player)
 		; input: d0 : BPM
 			movem.l	d0-d1/a0,-(a7)
-			move.w 	#(1<<13),$dff09a			; CIA interrupt
+			move.w 	#(1<<13),$dff09a	; CIA interrupt
 			lea		$bfd000,a0
 			move.b 	#$7f,$d00(a0)
 			move.b 	#$10,$e00(a0)
@@ -922,6 +914,12 @@ cia50HzInstall:
 			move.b	d1,$500(a0)
 			move.b	#$83,$d00(a0)
 			move.b	#$11,$e00(a0)
+			
+			move.b	#496&255,$600(a0)		; set timer b to 496 ( to set DMACON )
+			move.b	#496>>8,$700(a0)
+
+			move.w 	#(1<<13),$dff09c		; clear any req CIA
+		
 			move.w 	#$e000,$dff09a	; CIA interrupt enabled
 			movem.l	(a7)+,d0-d1/a0
 			rts
@@ -936,10 +934,9 @@ clearSprites:
 			rts
 		
 guruBootStrap:
-		repeat	(($30-$8)/4)
-		{
+		rept	(($30-$8)/4)
 			bsr		guruMeditation
-		}		
+		endr
 		
 guruMeditation:
 			move.w	#$7fff,$dff096
@@ -1154,11 +1151,6 @@ kernelCrcEnd:
 	; screen output debug routines
 	;-------------------------------------------------------------------					
 		include	"debug_screen.asm"
-
-	;-------------------------------------------------------------------				
-	; LZ4 fast depacker 
-	;-------------------------------------------------------------------				
-		include "lz4_depack.asm"
 		
 	;-------------------------------------------------------------------				
 	; ARJ mode 7 depacker 
@@ -1166,20 +1158,19 @@ kernelCrcEnd:
 		include "arj7.asm"
 
 	;-------------------------------------------------------------------				
-	; Module Player
+	; Light Speed Module Player
 	;-------------------------------------------------------------------				
-musicPlayer:
-		incbin	"p61player.bin"
+		include	"LightSpeedPlayer.asm"
 		
 
 crcProceedInfo:
-		dc.w	kernelCrcStart - kernelStart, kernelCrcEnd - kernelCrcStart,0
-		dc.w	arjCrcStart - kernelStart, arjCrcEnd - arjCrcStart,0
-		dc.w	loaderCrcStart - kernelStart, loaderCrcEnd - loaderCrcStart,0
-		dc.w	relocCrcStart - kernelStart, relocCrcEnd - relocCrcStart,0
-		dc.w	memoryCrcStart - kernelStart, memoryCrcEnd - memoryCrcStart,0
-		dc.w	debugScreenCrcStart - kernelStart, debugScreenCrcEnd - debugScreenCrcStart,0
-		dc.w	directory - kernelStart
+		dc.w	kernelCrcStart-kernelStart, kernelCrcEnd-kernelCrcStart,0
+		dc.w	arjCrcStart-kernelStart, arjCrcEnd-arjCrcStart,0
+		dc.w	loaderCrcStart-kernelStart, loaderCrcEnd-loaderCrcStart,0
+		dc.w	relocCrcStart-kernelStart, relocCrcEnd-relocCrcStart,0
+		dc.w	memoryCrcStart-kernelStart, memoryCrcEnd-memoryCrcStart,0
+		dc.w	debugScreenCrcStart-kernelStart, debugScreenCrcEnd-debugScreenCrcStart,0
+		dc.w	directory-kernelStart
 fatSize:	dc.w	0,0				; hacky: fatsize is patched at begin
 
 		dc.w	-2			; end marker
@@ -1189,9 +1180,9 @@ dynamicAllocs:
 systemChipBase:		dc.l	$100			; this is the first CHIP alloc by kernel, so if it fall to $0, keep $100 space for cpu vectors
 pCopperList1:		dc.l	1024
 pCopperList2:		dc.l	1024
-pKernelBase:		dc.l	0 | LDOS_MEM_ANY_RAM
-pUserStack:			dc.l	LDOS_USERSTACK_SIZE | LDOS_MEM_ANY_RAM
-pSuperStack:		dc.l	LDOS_SUPERSTACK_SIZE | LDOS_MEM_ANY_RAM
+pKernelBase:		dc.l	0|LDOS_MEM_ANY_RAM
+pUserStack:			dc.l	LDOS_USERSTACK_SIZE|LDOS_MEM_ANY_RAM
+pSuperStack:		dc.l	LDOS_SUPERSTACK_SIZE|LDOS_MEM_ANY_RAM
 					dc.l	-2
 
 	rsreset
@@ -1205,12 +1196,14 @@ diskOffset:			ds.l	1
 currentFile:		dc.w	0
 qVBL:				dc.l	0
 nextFx:				dc.l	0,0,0
-nextMusic:			dc.l	0,0,0
+LSMusic:			dc.l	0
+LSBank:				dc.l	0
+LSPInfos:			dc.l	0
+LSPCurBpm:			dc.w	0
+LSPDmaCon:			dc.w	$8000
 sectorOffset:		ds.w	1
-pModule:			dc.l	0
 bMusicPlay:			dc.w	0
-fadeOutStep:		dc.w	0
-fadeOutValue:		dc.w	0
+musicTick:			dc.l	0
 clockTick:			dc.l	0
 startupFade:		dc.w	-1		; no startup fade by default (if HDD mode)
 
