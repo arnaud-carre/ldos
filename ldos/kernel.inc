@@ -71,6 +71,12 @@ LDOS_GET_ENTROPY					=	10*4
 ; WARNING: Trash all registers
 LDOS_TRACKLOADER_FRAME_TICK			=	11*4
 
+; out: d0.l 32bits clock counter
+; This clock is incremented with internal 50hz-ish frequency.
+; The frequency depends on ; the main music BPM. ( standard is 50hz if no music ).
+; This counter is *not* synced to VBlank ( use your own VBL or Copper handler
+; if you want VBL synced counter)
+LDOS_GET_CLOCK_TICK					=	12*4
 
 LDOS_MEM_ANY_RAM		=	(1<<30)
 LDOS_MEM_CLEAR			=	(1<<29)

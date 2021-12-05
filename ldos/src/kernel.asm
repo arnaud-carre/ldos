@@ -250,6 +250,7 @@ kernelLibrary:
 			bra.w	loadBinaryBlob
 			bra.w	getEntropy
 			bra.w	trackLoaderTick
+			bra.w	ldosGetClockTick
 			
 			opt o+		; enable
 			
@@ -353,7 +354,6 @@ runLoadedFile:
 	
 		
 .txtUnknowFile:	dc.b	"Unknow file!",0
-.txtMODNotSupported:	dc.b	".MOD Not supported (only .p61)",0
 				even
 								
 installCopperList:
@@ -387,6 +387,10 @@ musicStop:	lea		bMusicPlay(pc),a0
 
 musicGetTick:
 			move.l	musicTick(pc),d0
+			rts
+
+ldosGetClockTick:
+			move.l	clockTick(pc),d0
 			rts
 
 musicStart:	
@@ -800,6 +804,9 @@ ldos50Hz:
 			move.b	#$19,$bfdf00			; start timerB, one shot
 	
 .noMusic:	bsr		trackLoaderTick
+
+			lea		clockTick(pc),a0
+			addq.l	#1,(a0)
 
 			movem.l	(a7)+,d0-a6
 ;			move.w	#0,$dff180
