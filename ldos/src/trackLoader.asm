@@ -317,7 +317,8 @@ trackLoaderTick:
 			lea		trackloaderVars(pc),a6
 			move.w	trkState(a6),d0
 			beq.s	.idle
-			
+
+			pea		.idle(pc)
 			lea		$dff000,a3
 			lea		$bfe001,a4
 			lea		$bfd100,a5

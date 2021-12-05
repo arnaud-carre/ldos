@@ -805,9 +805,6 @@ ldos50Hz:
 	
 .noMusic:	bsr		trackLoaderTick
 
-			lea		clockTick(pc),a0
-			addq.l	#1,(a0)
-
 			movem.l	(a7)+,d0-a6
 ;			move.w	#0,$dff180
 .skipa:		nop
