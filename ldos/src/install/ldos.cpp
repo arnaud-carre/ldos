@@ -468,7 +468,8 @@ static	bool	AdfExport(char* argv[], const ldosFile* files, int count, const ldos
 	{
 		printf("Disk contains %dKiB (%dbytes, %d free bytes)\n", (diskOffset + 1023) >> 10, diskOffset, kMaxAdfSize - diskOffset);
 		// round up to a floppy cylinder size
-		diskOffset = (diskOffset + 2 * 11 * 512 - 1)&(-2 * 11 * 512);
+		const int cylinderCount = (diskOffset + 2 * 11 * 512 - 1) / (2 * 11 * 512);
+		diskOffset = cylinderCount * (2 * 11 * 512);
 		printf("ADF file round up to %d KiB\n", (diskOffset + 1023) >> 10);
 		BootSectorExec((u32*)adfBuffer);
 
