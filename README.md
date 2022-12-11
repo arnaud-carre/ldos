@@ -1,4 +1,4 @@
-# <div align="center">LDOS v1.30 (Leonard Demo Operating System)</div>
+# <div align="center">LDOS v1.31 (Leonard Demo Operating System)</div>
 
 ## Introduction
 LDOS is a framework to easily build Amiga multi-part demos. You can chain several amiga executable effects. LDOS is managing memory allocation, floppy disk loading, data depacking and image disk creation. LDOS also includes an HDD loader to run your demo from harddisk. LDOS toolchain is running on Windows platform.
@@ -32,6 +32,7 @@ Each demo part should be a standard Amiga executable.
 ## LDOS Technical details
 * LDOS should run on any Amiga ( from A500 to 060 )
 * LDOS is primary made for A500 demo. If ran on higger amiga, CPU caches are switched off
+* LDOS is using LightSpeedPlayer (LSP), the fastest Amiga MOD player ever
 * Generated demo is 1MiB RAM targeted ( with at least 512KiB of chip memory )
 * Use ARJ mode 7 packer
 * LDOS is loading & depacking at the same time. Most of demos are loading, then depacking. LDOS depacks while loading, so basically depacking time is free.

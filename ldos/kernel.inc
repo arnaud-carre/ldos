@@ -78,5 +78,11 @@ LDOS_TRACKLOADER_FRAME_TICK			=	11*4
 ; if you want VBL synced counter)
 LDOS_GET_CLOCK_TICK					=	12*4
 
+; Returns the current MOD music sequence position
+; out: d0.w 16bits
+LDOS_MUSIC_GET_SEQ_POS				=	13*4
+
+
+
 LDOS_MEM_ANY_RAM		=	(1<<30)
 LDOS_MEM_CLEAR			=	(1<<29)

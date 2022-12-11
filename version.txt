@@ -1,3 +1,7 @@
+LDOS 1.31
+	- upgrade to LSP v1.11
+	- new LDOS command LDOS_MUSIC_GET_SEQ_POS to get music sequence position
+
 LDOS 1.30
 	- now LDOS supports Light Speed Player module replay
 	- LDOS kernel public functions cleanup

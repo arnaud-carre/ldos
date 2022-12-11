@@ -1,6 +1,6 @@
 ;*****************************************************************
 ;
-;	Light Speed Player v1.05
+;	Light Speed Player v1.11
 ;	Fastest Amiga MOD player ever :)
 ;	Written By Arnaud Carré (aka Leonard / OXYGENE)
 ;	https://github.com/arnaud-carre/LSPlayer
@@ -8,47 +8,122 @@
 ;
 ;	"small & fast" player version ( average time: 1 scanline )
 ;	Less than 512 bytes of code!
-;	You can also use generated "insane" player code for even more perf
+;	You can also use generated "insane" player code for half scanline replayer (-insane option)
 ;
-;	--------How to use--------- 
+;	LSP_MusicInit		Initialize a LSP driver + relocate score&bank music data
+;	LSP_MusicPlayTick	Play a LSP music (call it per frame)
+;	LSP_MusicGetPos		Get mod seq pos (see -seqtiming option in LSPConvert)
+;	LSP_MusicSetPos		Set mod seq pos (see -seqtiming option in LSPConvert)
 ;
-;	bsr LSP_MusicDriver+0 : Init LSP player code
+;*****************************************************************
+
+;------------------------------------------------------------------
+;
+;	LSP_MusicInit
+;
 ;		In:	a0: LSP music data(any memory)
 ;			a1: LSP sound bank(chip memory)
-;			a2: DMACON 8bits byte address (should be odd address!)
+;			a2: DMACON low byte address (should be odd address!)
 ;		Out:a0: music BPM pointer (16bits)
 ;			d0: music len in tick count
 ;
-;	bsr LSP_MusicDriver+4 : LSP player tick (call once per frame)
+;------------------------------------------------------------------
+LSP_MusicInit:
+			cmpi.l	#'LSP1',(a0)+
+			bne		.dataError
+			move.l	(a0)+,d0		; unique id
+			cmp.l	(a1),d0			; check that sample bank is this one
+			bne		.dataError
+
+			lea		LSP_State(pc),a3
+			move.l	a2,m_dmaconPatch(a3)
+			move.w	#$8000,-1(a2)			; Be sure DMACon word is $8000 (note: a2 should be ODD address)
+			cmpi.w	#$010b,(a0)+			; v1.10 minimal major & minor version of latest compatible LSPConvert.exe
+			blt		.dataError
+			movea.l	a0,a4					; relocation flag ad
+			addq.w	#2,a0					; skip relocation flag
+			move.w	(a0)+,m_currentBpm(a3)	; default BPM
+			move.w	(a0)+,m_escCodeRewind(a3)
+			move.w	(a0)+,m_escCodeSetBpm(a3)
+			move.w	(a0)+,m_escCodeGetPos(a3)
+			move.l	(a0)+,-(a7)				; music len in frame ticks
+			move.w	(a0)+,d0				; instrument count
+			lea		-12(a0),a2				; LSP data has -12 offset on instrument tab ( to win 2 cycles in insane player :) )
+			move.l	a2,m_lspInstruments(a3)	; instrument tab addr ( minus 4 )
+			subq.w	#1,d0
+			move.l	a1,d1
+			movea.l	a0,a1					; keep relocated flag
+.relocLoop:	tst.b	(a4)				; bit0 is relocation done flag
+			bne.s	.relocated
+			add.l	d1,(a0)
+			add.l	d1,6(a0)
+.relocated:	lea		12(a0),a0
+			dbf		d0,.relocLoop
+			move.w	(a0)+,d0				; codes table size
+			move.l	a0,m_codeTableAddr(a3)	; code table
+			add.w	d0,d0
+			add.w	d0,a0
+
+		; read sequence timing infos (if any)
+			move.w	(a0)+,m_seqCount(a3)
+			beq.s	.noSeq
+			move.l	a0,m_seqTable(a3)
+			clr.w	m_currentSeq(a3)
+			move.w	m_seqCount(a3),d0
+			moveq	#0,d1
+			move.w	d0,d1
+			lsl.w	#3,d1			; 8 bytes per entry
+			add.w	#12,d1			; add 3 last 32bits (word stream size, byte stream loop, word stream loop)
+			add.l	a0,d1			; word stream data address
+			subq.w	#1,d0
+.seqRel:	tst.b	(a4)
+			bne.s	.skipRel
+			add.l	d1,(a0)
+			add.l	d1,4(a0)
+.skipRel:	addq.w	#8,a0
+			dbf		d0,.seqRel
+
+.noSeq:		move.l	(a0)+,d0				; word stream size
+			move.l	(a0)+,d1				; byte stream loop point
+			move.l	(a0)+,d2				; word stream loop point
+
+			st		(a4)					; mark this music score as "relocated"
+
+			move.l	a0,m_wordStream(a3)
+			lea		0(a0,d0.l),a1			; byte stream
+			move.l	a1,m_byteStream(a3)
+			add.l	d2,a0
+			add.l	d1,a1
+			move.l	a0,m_wordStreamLoop(a3)
+			move.l	a1,m_byteStreamLoop(a3)
+			bset.b	#1,$bfe001				; disabling this fucking Low pass filter!!
+			lea		m_currentBpm(a3),a0
+			move.l	(a7)+,d0				; music len in frame ticks
+			rts
+
+.dataError:	illegal
+
+;------------------------------------------------------------------
+;
+;	LSP_MusicPlayTick
+;
 ;		In:	a6: should be $dff0a0
 ;			Scratched regs: d0/d1/d2/a0/a1/a2/a3/a4/a5
 ;		Out:None
 ;
-;*****************************************************************
-
-	opt o-		; switch off ALL optimizations (we don't want vasm to change some code size, and all optimizations are done!)
-
-LSP_MusicDriver:
-			bra.w	.LSP_PlayerInit
-
-;.LSP_MusicDriver+4:						; player tick handle ( call this at music player rate )
-			lea		.LSPVars(pc),a1
+;------------------------------------------------------------------
+LSP_MusicPlayTick:
+			lea		LSP_State(pc),a1
 			move.l	(a1),a0					; byte stream
+			move.l	m_codeTableAddr(a1),a2	; code table
 .process:	moveq	#0,d0
 .cloop:		move.b	(a0)+,d0
-			bne.s	.swCode
-			addi.w	#$0100,d0
-			bra.s	.cloop
-.swCode:	add.w	d0,d0
-			move.l	m_codeTableAddr(a1),a2	; code table
+			beq		.cextended
+			add.w	d0,d0
 			move.w	0(a2,d0.w),d0			; code
 			beq		.noInst
-			cmp.w	m_escCodeRewind(a1),d0
-			beq		.r_rewind
-			cmp.w	m_escCodeSetBpm(a1),d0
-			beq		.r_chgbpm
 
-			add.b	d0,d0
+.cmdExec:	add.b	d0,d0
 			bcc.s	.noVd
 			move.b	(a0)+,$d9-$a0(a6)
 .noVd:		add.b	d0,d0
@@ -116,65 +191,73 @@ LSP_MusicDriver:
 .noInst:	move.l	a0,(a1)			; store word stream (or byte stream if coming from early out)
 			rts
 
-.r_rewind:	move.l	m_byteStreamLoop(a1),a0
+.cextended:	addi.w	#$100,d0
+			move.b	(a0)+,d0
+			beq.s	.cextended
+			add.w	d0,d0
+			move.w	0(a2,d0.w),d0			; code
+
+			cmp.w	m_escCodeRewind(a1),d0
+			beq.s	.r_rewind
+			cmp.w	m_escCodeSetBpm(a1),d0
+			beq.s	.r_chgbpm
+			cmp.w	m_escCodeGetPos(a1),d0
+			bne		.cmdExec
+
+.r_setPos:	move.b	(a0)+,(m_currentSeq+1)(a1)
+			bra		.process
+
+.r_rewind:	
+			move.l	m_byteStreamLoop(a1),a0
 			move.l	m_wordStreamLoop(a1),m_wordStream(a1)
 			bra		.process
 
 .r_chgbpm:	move.b	(a0)+,(m_currentBpm+1)(a1)	; BPM
 			bra		.process
 
-; a0: music data (any mem)
-; a1: sound bank data (chip mem)
-; a2: 16bit DMACON word address
+.resetv:	dc.l	0,0,0,0
 
-.LSP_PlayerInit:
-			cmpi.l	#'LSP1',(a0)+
-			bne		.dataError
-			move.l	(a0)+,d0		; unique id
-			cmp.l	(a1),d0			; check that sample bank is this one
-			bne.s	.dataError
 
-			lea		.LSPVars(pc),a3
-			cmpi.w	#$0104,(a0)+			; minimal major & minor version of latest compatible LSPConvert.exe
-			blt.s	.dataError
-			move.w	(a0)+,m_currentBpm(a3)	; default BPM
-			move.w	(a0)+,m_escCodeRewind(a3)
-			move.w	(a0)+,m_escCodeSetBpm(a3)
-			move.l	(a0)+,-(a7)
-			move.l	a2,m_dmaconPatch(a3)
-			move.w	#$8000,-1(a2)			; Be sure DMACon word is $8000 (note: a2 should be ODD address)
-			move.w	(a0)+,d0				; instrument count
-			lea		-12(a0),a2				; LSP data has -12 offset on instrument tab ( to win 2 cycles in fast player :) )
-			move.l	a2,m_lspInstruments(a3)	; instrument tab addr ( minus 4 )
-			subq.w	#1,d0
-			move.l	a1,d1
-.relocLoop:	bset.b	#0,3(a0)				; bit0 is relocation done flag
-			bne.s	.relocated
-			add.l	d1,(a0)
-			add.l	d1,6(a0)
-.relocated:	lea		12(a0),a0
-			dbf		d0,.relocLoop
-			move.w	(a0)+,d0				; codes count (+2)
-			move.l	a0,m_codeTableAddr(a3)	; code table
-			add.w	d0,d0
+;------------------------------------------------------------------
+;
+;	LSP_MusicSetPos
+;
+;		In: d0: seq position (from 0 to last seq of the song)
+;		Out:None
+;
+;	Force the replay pointer to a seq position. If music wasn't converted
+;	using -setpos option, this func does nothing
+;
+;------------------------------------------------------------------
+LSP_MusicSetPos:
+			lea		LSP_State(pc),a3
+			move.w	m_seqCount(a3),d1
+			beq.s	.noTimingInfo
+			cmp.w	d1,d0
+			bge.s	.noTimingInfo
+			move.w	d0,m_currentSeq(a3)
+			move.l	m_seqTable(a3),a0
+			lsl.w	#3,d0
 			add.w	d0,a0
-			move.l	(a0)+,d0				; word stream size
-			move.l	(a0)+,d1				; byte stream loop point
-			move.l	(a0)+,d2				; word stream loop point
-
-			move.l	a0,m_wordStream(a3)
-			lea		0(a0,d0.l),a1			; byte stream
-			move.l	a1,m_byteStream(a3)
-			add.l	d2,a0
-			add.l	d1,a1
-			move.l	a0,m_wordStreamLoop(a3)
-			move.l	a1,m_byteStreamLoop(a3)
-			bset.b	#1,$bfe001				; disabling this fucking Low pass filter!!
-			lea		m_currentBpm(a3),a0
-			move.l	(a7)+,d0				; music len in frame ticks
+			move.l	(a0)+,m_wordStream(a3)
+			move.l	(a0)+,m_byteStream(a3)
+.noTimingInfo:
 			rts
 
-.dataError:	illegal
+;------------------------------------------------------------------
+;
+;	LSP_MusicGetPos
+;
+;		In: None
+;		Out: d0:  seq position (from 0 to last seq of the song)
+;
+;	Get the current seq position. If music wasn't converted with
+;	-getpos option, this func just returns 0
+;
+;------------------------------------------------------------------
+LSP_MusicGetPos:
+			move.w	(LSP_State+m_currentSeq)(pc),d0
+			rts
 
 	rsreset
 	
@@ -189,8 +272,10 @@ m_relocDone:		rs.w	1	; 24 reloc done flag
 m_currentBpm:		rs.w	1	; 26 current BPM
 m_byteStreamLoop:	rs.l	1	; 28 byte stream loop point
 m_wordStreamLoop:	rs.l	1	; 32 word stream loop point
+m_seqCount:			rs.w	1
+m_seqTable:			rs.l	1
+m_currentSeq:		rs.w	1
+m_escCodeGetPos:	rs.w	1
 sizeof_LSPVars:		rs.w	0
 
-.LSPVars:	ds.b	sizeof_LSPVars
-			
-.resetv:	dc.l	0,0,0,0
+LSP_State:			ds.b	sizeof_LSPVars

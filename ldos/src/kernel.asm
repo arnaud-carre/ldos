@@ -251,6 +251,7 @@ kernelLibrary:
 			bra.w	getEntropy
 			bra.w	trackLoaderTick
 			bra.w	ldosGetClockTick
+			bra.w	LSP_MusicGetPos			; LDOS_MUSIC_GET_SEQ_POS
 			
 			opt o+		; enable
 			
@@ -405,7 +406,7 @@ musicStart:
 			move.l	d0,a0
 			move.l	d1,a1
 			lea		LSPDmaCon+1(pc),a2
-			bsr		LSP_MusicDriver
+			bsr		LSP_MusicInit
 			lea		LSPInfos(pc),a1
 			move.l	a0,(a1)
 
@@ -785,7 +786,7 @@ ldos50Hz:
 			beq.s	.noMusic
 
 			lea		$dff0a0,a6
-			bsr		LSP_MusicDriver+4
+			bsr		LSP_MusicPlayTick
 
 			lea		musicTick(pc),a0
 			addq.l	#1,(a0)
