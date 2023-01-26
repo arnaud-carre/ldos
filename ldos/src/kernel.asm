@@ -721,6 +721,8 @@ loadFileCustom:
 			
 			lea		alignedDmaLoadAd(pc),a1
 			move.l	a0,(a1)
+			lea		nextFx(pc),a6
+			move.l	a0,m_ad(a6)
 
 			bra		loadFileRaw
 		
