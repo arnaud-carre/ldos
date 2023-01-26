@@ -148,6 +148,18 @@ hddChangeDisk:
 ; return	a1.l  busy flag address (.w)
 
 trackLoadStart:
+
+		; Alloc trackloading buffers ( MFM and ARJ7 depacking buffer)
+			pea		(a0)
+			move.b	#MEMLABEL_TRACKLOAD,(SVAR_CURRENT_MEMLABEL).w
+			lea		nextEXEAllocs(pc),a0
+			move.l	#MFM_DMA_SIZE,(a0)+
+			move.l	#MFM_DMA_SIZE,(a0)+
+			move.l	#13320|LDOS_MEM_ANY_RAM,(a0)+
+			lea		nextEXEAllocs(pc),a0
+			bsr		batchAllocator
+			move.l	(a7)+,a0
+
 			tst.l	(SVAR_HDD_BUFFER).w
 			bne		hddLoadStart
 

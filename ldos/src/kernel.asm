@@ -255,6 +255,7 @@ kernelLibrary:
 			bra.w	persistentFakeAlloc
 			bra.w	persistentFakeGet
 			bra.w	persistentFakeTrash
+			bra.w	loadFileCustom
 			
 			opt o+		; enable
 			
@@ -599,8 +600,7 @@ fastClear:
 
 		
 		
-; input: d0: packed size
-; 		 d1: unpacked size		
+; input: nextFx struct properly filled
 nextEXEDoAlloc:
 		movem.l	d0-d1/a0,-(a7)
 
@@ -608,8 +608,8 @@ nextEXEDoAlloc:
 				
 		move.b	#MEMLABEL_PRECACHED_FX,(SVAR_CURRENT_MEMLABEL).w
 
-		move.l	d1,d0				; unpacked size
-		addi.l	#DEPACK_IN_PLACE_MARGIN,d0
+		move.l	m_size(a6),d0
+		addi.l	#DEPACK_IN_PLACE_MARGIN,d0	; unpacked size
 		
 		btst.b	#kLDOSLsBankFile,(nextFx+m_flags+1)(pc)	; Try to directly load in CHIP if music file
 		beq.s	.normal
@@ -630,11 +630,12 @@ nextEXEDoAlloc:
 .next:	lea		nextEXEDepacked(pc),a0
 		move.l	d0,(a0)
 
-		movem.l	(a7),d0-d1				;		
+		move.l	m_packedSize(a6),d0
+		move.l	m_size(a6),d1
 		addi.l	#DEPACK_IN_PLACE_MARGIN,d1
 		sub.l	d0,d1						; offset
 		add.l	(a0),d1						; loading AD
-		lea		nextEXEPacked(pc),a0
+		lea		alignedDmaLoadAd(pc),a0
 		move.l	d1,(a0)
 
 		movem.l	(a7)+,d0-d1/a0
@@ -660,30 +661,20 @@ loadBinaryBlob:
 			bsr		freeMemLabel
 
 			move.w	(a7)+,d0
-			bsr		loadFile
+			bsr		allocAndLoadFile
 		
 			lea		nextFx(pc),a6
 			move.l	m_ad(a6),a0
 			move.l	m_size(a6),d0
 
 			rts
-		
+
 ;-----------------------------------------------------------------		
+; input:
 ; d0: screen number ( script.txt order )		
-loadFile:
-
-			move.w	d0,-(a7)
-
-		; Alloc trackloading buffers ( MFM and ARJ7 depacking buffer)
-			move.b	#MEMLABEL_TRACKLOAD,(SVAR_CURRENT_MEMLABEL).w
-			lea		nextEXEAllocs(pc),a0
-			move.l	#MFM_DMA_SIZE,(a0)+
-			move.l	#MFM_DMA_SIZE,(a0)+
-			move.l	#13320|LDOS_MEM_ANY_RAM,(a0)+
-			lea		nextEXEAllocs(pc),a0
-			bsr		batchAllocator
-
-			move.w	(a7)+,d0
+; output:
+; nextFx filled properly
+getFSInfos:
 			lsl.w	#4,d0				; FAT entry is 4 DWORDS: Floppy disk offset, Packed size, Unpacked size, user Arg
 
 .infloop:	cmp.w	fatSize(pc),d0		; special case to test each FX. when we reach end of disk, loop here
@@ -695,19 +686,19 @@ loadFile:
 			move.w	12(a5),m_flags(a6)		; file entry flags
 			move.w	14(a5),m_arg(a6)		; user arg
 
-			move.l	8(a5),d0		; depacked size
-			move.l	d0,m_size(a6)		
-
+			move.l	8(a5),m_size(a6)		; depacked size
 			move.l	(a5),d0			; offset dans le disk.
 			add.l	diskOffset(pc),d0
 
 			move.w	#511,d1
 			and.w	d0,d1			; sector offset
 			lea		sectorOffset(pc),a1
-			move.w	d1,(a1)		; store in .sectorOffset
-			
+			move.w	d1,(a1)			; store in .sectorOffset
+
 			move.l	d0,d1
-			add.l	4(a5),d1		; +size = ad de fin
+			move.l	4(a5),d2
+			move.l	d2,m_packedSize(a6)
+			add.l	d2,d1		; +size = ad de fin
 			andi.l	#-512,d0		; align on sector boundary
 			sub.l	d0,d1			; size to load(with begin align)
 			addi.l	#511,d1			; size should be a sector count
@@ -715,28 +706,50 @@ loadFile:
 			moveq	#9,d2
 			lsr.l	d2,d1			; sector count
 			lsr.l	d2,d0			; sector start
+			move.w	d0,m_secStart(a6)
+			move.w	d1,m_secCount(a6)
+			rts
+		
+		
+;-----------------------------------------------------------------		
+; d0: screen number ( script.txt order )		
+; a0: buffer to load
+loadFileCustom:
+			pea		(a0)
+			bsr		getFSInfos
+			move.l	(a7)+,a0
 			
-			movem.w	d0-d1,-(a7)
-			
-			lsl.l	d2,d1			; memory block size (packed block size to read)
-			move.l	d1,d0			; packed block size to alloc
+			lea		alignedDmaLoadAd(pc),a1
+			move.l	a0,(a1)
 
-			move.l	m_size(a6),d1	; depacked block size to alloc
+			bra		loadFileRaw
+		
+;-----------------------------------------------------------------		
+; d0: screen number ( script.txt order )		
+allocAndLoadFile:
 
+			bsr		getFSInfos
+
+			move.l	nextFx+m_size(pc),d0	; depacked block size to alloc
 			bsr		nextEXEDoAlloc
-			
+
+			lea		nextFx(pc),a6
 			move.l	nextEXEDepacked(pc),m_ad(a6)
-			
-			move.l	nextEXEPacked(pc),a0
-			movem.w	(a7)+,d0-d1
-			pea		(a0)			; packed data load ad
-			
+			move.l	alignedDmaLoadAd(pc),a0
+
+; input: 
+;	nextFx struct properly filled
+;	a0: loading address (with enough margin to depack)
+loadFileRaw:
+			lea		nextFx(pc),a6
+
 		; start trackloader !!
+			movem.w	m_secStart(a6),d0-d1
 			bsr		trackLoadStart
 
 		; now loading is running async, we could alloc a mem block for depacked data
 		; and run the depacker in the main thread (depacker takes care or loading ptr)		
-			move.l	(a7)+,a1
+			move.l	alignedDmaLoadAd(pc),a1
 			add.w	sectorOffset(pc),a1		; packed data ad
 			move.l	m_ad(a6),a0
 
@@ -771,7 +784,7 @@ loadNextFile:
 			bne		loadNextFileError
 
 			move.w	currentFile(pc),d0
-			bsr		loadFile
+			bsr		allocAndLoadFile
 
 			rts
 
@@ -1237,8 +1250,11 @@ pSuperStack:		dc.l	LDOS_SUPERSTACK_SIZE|LDOS_MEM_ANY_RAM
 	
 m_ad:				rs.l	1
 m_size:				rs.l	1
+m_packedSize:		rs.l	1
 m_flags:			rs.w	1
 m_arg:				rs.w	1
+m_secStart:			rs.w	1
+m_secCount:			rs.w	1
 					
 diskOffset:			ds.l	1
 currentFile:		dc.w	0
@@ -1266,7 +1282,7 @@ persistentFakeAd:	dc.l	0
 persistentFakeSize:	dc.l	0
 
 nextEXEDepacked:	dc.l	0
-nextEXEPacked:		dc.l	0
+alignedDmaLoadAd:	dc.l	0
 
 nextEXEAllocs:
 pMFMRawBuffer1:		dc.l	0	;MFM_DMA_SIZE

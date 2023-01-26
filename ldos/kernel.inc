@@ -98,6 +98,10 @@ LDOS_PERSISTENT_FAKE_GET			=	15*4
 ; out: none
 LDOS_PERSISTENT_FAKE_TRASH			=	16*4
 
+; Custom RAW (unpacked) file load
+; in : d0: file id
+;    : a0: buffer to load (WARNING: it's up to you to alloc enough space)
+LDOS_LOAD_FILE_CUSTOM				=	17*4
 
 LDOS_MEM_ANY_RAM		=	(1<<30)
 LDOS_MEM_CLEAR			=	(1<<29)
