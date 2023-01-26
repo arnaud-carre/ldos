@@ -244,34 +244,53 @@ kernelLibrary:
 			bra.w	musicGetTick			; music get info
 			bra.w	musicStop				; music stop (with fade out)
 			bra.w	isDisk2Inserted
-			bra.w	persistentAlloc
-			bra.w	persistentGet
-			bra.w	persistentTrash
+			bra.w	persistentChipAlloc
+			bra.w	persistentChipGet
+			bra.w	persistentChipTrash
 			bra.w	loadBinaryBlob
 			bra.w	getEntropy
 			bra.w	trackLoaderTick
 			bra.w	ldosGetClockTick
 			bra.w	LSP_MusicGetPos			; LDOS_MUSIC_GET_SEQ_POS
+			bra.w	persistentFakeAlloc
+			bra.w	persistentFakeGet
+			bra.w	persistentFakeTrash
 			
 			opt o+		; enable
 			
-persistentAlloc:
+persistentChipAlloc:
 			movem.l	a0,-(a7)
 			move.l	d0,-(a7)
-			bsr		persistentTrash			; Always trash any previous persistent CHIP if persistent alloc is made
+			bsr		persistentChipTrash			; Always trash any previous persistent CHIP if persistent alloc is made
 			bsr		allocPersistentChip
 			lea		persistentChipAd(pc),a0
 			move.l	d0,(a0)+				; store AD
 			move.l	(a7)+,(a0)+				; store original size
 			movem.l	(a7)+,a0			
 			rts
+
+persistentFakeAlloc:
+			movem.l	a0,-(a7)
+			move.l	d0,-(a7)
+			bsr		persistentFakeTrash		; Always trash any previous persistent FAKE if persistent alloc is made
+			bsr		allocPersistentFake
+			lea		persistentFakeAd(pc),a0
+			move.l	d0,(a0)+				; store AD
+			move.l	(a7)+,(a0)+				; store original size
+			movem.l	(a7)+,a0			
+			rts
 			
-persistentGet:
+persistentChipGet:
 			move.l	persistentChipAd(pc),d0
 			move.l	persistentChipSize(pc),d1
 			rts
+
+persistentFakeGet:
+			move.l	persistentFakeAd(pc),d0
+			move.l	persistentFakeSize(pc),d1
+			rts
 			
-persistentTrash:
+persistentChipTrash:
 			movem.l	a0,-(a7)
 			bsr		trashPersistentChip
 			lea		persistentChipAd(pc),a0
@@ -280,6 +299,14 @@ persistentTrash:
 			movem.l	(a7)+,a0			
 			rts
 			
+persistentFakeTrash:
+			movem.l	a0,-(a7)
+			bsr		trashPersistentFake
+			lea		persistentFakeAd(pc),a0
+			clr.l	(a0)+
+			clr.l	(a0)+
+			movem.l	(a7)+,a0			
+			rts
 			
 userLoadNextFile:
 			bsr		loadNextFile
@@ -713,11 +740,27 @@ loadFile:
 			add.w	sectorOffset(pc),a1		; packed data ad
 			move.l	m_ad(a6),a0
 
+			btst.b	#7,m_flags(a6)		; file entry flags
+			beq.s	.depack
+
+		; stored file (unpacked) wait for disk io ends		
+			movem.l	a0-a1,-(a7)
+.wLoop:		move.w	(trackloaderVars+trkDecodedSecCount)(pc),d0
+			beq.s	.loadOk
+			bsr		MFMDecodeTrackCallback
+			bra.s	.wLoop
+
+.loadOk:	movem.l	(a7)+,a0-a1
+			exg		a0,a1
+			move.l	m_size(a6),d0
+			bsr		fastMemMove
+			bra.s	.over
+
 		; run the depacker (packed data are loading async)
-			bsr		mainThreadDepack
+.depack:	bsr		mainThreadDepack
 
 		; free tackloading buffers
-			moveq	#MEMLABEL_TRACKLOAD,d0
+.over:		moveq	#MEMLABEL_TRACKLOAD,d0
 			bsr		freeMemLabel
 
 			rts
@@ -1219,6 +1262,8 @@ copperListData:
 
 persistentChipAd:	dc.l	0
 persistentChipSize:	dc.l	0
+persistentFakeAd:	dc.l	0
+persistentFakeSize:	dc.l	0
 
 nextEXEDepacked:	dc.l	0
 nextEXEPacked:		dc.l	0
@@ -1228,6 +1273,8 @@ pMFMRawBuffer1:		dc.l	0	;MFM_DMA_SIZE
 pMFMRawBuffer2:		dc.l	0	;MFM_DMA_SIZE
 pArj7Buffer:		dc.l	0	;13320 | LDOS_MEM_ANY_RAM		; ARJ Method 7 depacking buffer
 					dc.l	-2
+
+
 		
 directory:		; NOTE: Directory data are directly appended here by the installer
 kernelEnd:

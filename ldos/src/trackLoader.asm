@@ -160,6 +160,7 @@ trackLoadStart:
 			
 			move.l	a0,(SVAR_LOAD_PTR).w
 			move.w	d1,trkSectorCount(a6)
+			move.w	d1,trkDecodedSecCount(a6)
 
 			add.w	d0,d1				; sector end
 			subq.w	#1,d1
@@ -472,6 +473,7 @@ MFMDecodeTrackCallback:
 			tst.b	d0
 			bne.s	diskCrcError
 			subq.w	#1,m_sectorCount(a5)
+			subq.w	#1,trkDecodedSecCount(a6)
 
 .skip:		lea		(56+512*2)(a0),a0					; skip odd bits for next turn
 			tst.w	m_sectorCount(a5)
@@ -635,6 +637,7 @@ decoderGet:		dc.w	0
 trkState:			rs.w	1
 trkDiskBusy:		rs.w	1
 trkSectorCount:		rs.w	1
+trkDecodedSecCount:	rs.w	1
 trkTrack:			rs.w	1
 trkWantedTrack:		rs.w	1
 trkTSBegin:			rs.w	1

@@ -349,7 +349,6 @@ int		ldosScriptParsing(const char* sScriptName, ldosFile* out)
 		removeAnyEOL(ptr);
 		if (!_stricmp(tmpString, "end")) break;
 
-/*
 		if (!_stricmp(tmpString, "pack(off)"))
 		{
 			packing = false;
@@ -360,7 +359,6 @@ int		ldosScriptParsing(const char* sScriptName, ldosFile* out)
 			packing = true;
 			continue;
 		}
-*/
 
 		if (!_stricmp(tmpString, "change(disk)"))
 		{
@@ -408,7 +406,10 @@ void	ldosFatCreate(const ldosFile* files, int count, ldosFatEntry* out)
 		out->originalSize = bswap32((files->m_originalSize+1)&(-2));
 		out->packedSize = bswap32(files->m_packedSize);
 
-		out->flags = bswap16(1<<files->m_type);
+		u16 flags = 1 << files->m_type;
+		if (0 == files->m_packingMethod)
+			flags |= 0x8000;			// unpacked stored file
+		out->flags = bswap16(flags);
 		out->pad = 0;
 
 		diskOffset += files->m_packedSize;

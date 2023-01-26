@@ -82,6 +82,21 @@ LDOS_GET_CLOCK_TICK					=	12*4
 ; out: d0.w 16bits
 LDOS_MUSIC_GET_SEQ_POS				=	13*4
 
+; Alloc persistent FAKE memory block between two FX
+; in : d0.l: size of block
+; out: d0.l: Addr of the block
+LDOS_PERSISTENT_FAKE_ALLOC			=	14*4
+
+; Retreive any previously persistent FAKE memory block between two FX
+; in : none
+; out: d0.l: Addr of block ( or NULL if no persistent block)
+;	   d1.l: Size of block ( in bytes )
+LDOS_PERSISTENT_FAKE_GET			=	15*4
+
+; Free any previously persistent FAKE memory block
+; in : none
+; out: none
+LDOS_PERSISTENT_FAKE_TRASH			=	16*4
 
 
 LDOS_MEM_ANY_RAM		=	(1<<30)
