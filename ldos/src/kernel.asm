@@ -1261,7 +1261,7 @@ m_secCount:			rs.w	1
 diskOffset:			ds.l	1
 currentFile:		dc.w	0
 qVBL:				dc.l	0
-nextFx:				dc.l	0,0,0
+nextFx:				dc.l	0,0,0,0,0
 LSMusic:			dc.l	0
 LSBank:				dc.l	0
 LSPInfos:			dc.l	0
