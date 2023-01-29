@@ -215,9 +215,6 @@ kernelStart:
 		clr.w	(SVAR_VBL_COUNT).w
 		bsr		trackloaderInit
 		
-		lea		ldos50Hz(pc),a1
-		move.l	a1,$78.w
-
 		bsr		systemInstall
 		
 		moveq	#125,d0						; 125 BPM is default kernel freq
@@ -376,7 +373,31 @@ runLoadedFile:
 			moveq	#0,d0
 			bsr		crcCompute
 	ENDC
-			bsr		systemInstall		
+			bsr		systemInstall
+
+		; if user switched off our LDOS tick timer, run it again
+			lea		ldos50Hz(pc),a0
+			cmp.l	$78.w,a0			; if user changed $78 vector, reset it
+			bne.s	.rset
+			move.w	$dff01c,d0
+			btst	#13,d0
+			bne.s	.ok
+
+.rset:		moveq	#125,d0						; 125 BPM is default kernel freq
+			bsr		cia50HzInstall
+.ok:
+		; If no music is playing, switch off Audio (in case of audio still running in last fx)
+			move.w	bMusicPlay(pc),d0
+			bne.s	.ldosMusic
+			lea		$dff000,a5
+			move.w	#$f,$96(a5)
+			moveq	#0,d0
+			move.w	d0,$a8(a5)
+			move.w	d0,$b8(a5)
+			move.w	d0,$c8(a5)
+			move.w	d0,$d8(a5)
+			
+.ldosMusic:
 
 		; Free all memory of previous FX
 			moveq	#MEMLABEL_USER_FX,d0
@@ -976,6 +997,8 @@ cia50HzInstall:
 		; input: d0 : BPM
 			movem.l	d0-d1/a0,-(a7)
 			move.w 	#(1<<13),$dff09a	; CIA interrupt
+			lea		ldos50Hz(pc),a0
+			move.l	a0,$78.w
 			lea		$bfd000,a0
 			move.b 	#$7f,$d00(a0)
 			move.b 	#$10,$e00(a0)
