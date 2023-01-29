@@ -103,5 +103,10 @@ LDOS_PERSISTENT_FAKE_TRASH			=	16*4
 ;    : a0: buffer to load (WARNING: it's up to you to alloc enough space)
 LDOS_LOAD_FILE_CUSTOM				=	17*4
 
+; Force the next FX id. Could be nice if you want to load a previous FX
+; Input d0.w : fx file id
+;       d1.l : optional user argument passed to the next FX in d1
+LDOS_SET_NEXT_FX_ID					=	18*4
+
 LDOS_MEM_ANY_RAM		=	(1<<30)
 LDOS_MEM_CLEAR			=	(1<<29)

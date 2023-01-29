@@ -256,6 +256,8 @@ kernelLibrary:
 			bra.w	persistentFakeGet
 			bra.w	persistentFakeTrash
 			bra.w	loadFileCustom
+			bra.w	setNextFileId
+			
 			
 			opt o+		; enable
 			
@@ -365,6 +367,7 @@ runLoadedFile:
 			lea		nextFx(pc),a0
 			moveq	#0,d0
 			move.w	m_arg(a0),d0			; user arg
+			move.l	m_argd1(a0),d1
 			jsr		(a1)
 .noExec:
 
@@ -780,6 +783,13 @@ loadFileRaw:
 
 			rts
 
+setNextFileId:
+			lea		currentFile(pc),a0
+			move.w	d0,(a0)
+			lea		nextFx(pc),a0
+			move.l	d1,m_argd1(a0)
+			rts
+
 ;-----------------------------------------------------------------		
 loadNextFile:
 			move.l	(nextFx+m_ad)(pc),d0
@@ -998,7 +1008,7 @@ clearSprites:
 		
 guruBootStrap:
 		rept	(($30-$8)/4)
-			bsr		guruMeditation
+			bsr.w	guruMeditation
 		endr
 		
 guruMeditation:
@@ -1034,8 +1044,9 @@ guruMeditation:
 			lea		guruBootStrap(pc),a0
 			move.l	DEBUG_BSS_ZONE+dbg_iVector,d0
 			sub.l	a0,d0
+			subq.w	#4,d0
 			lsr.w	#2,d0
-			addq.w	#2-1,d0
+			addq.w	#2,d0
 			move.w	d0,DEBUG_BSS_ZONE+dbg_iVector
 			move.w	d0,-(a7)
 
@@ -1112,16 +1123,17 @@ guruMeditation:
 			dc.b	0
 			even
 			
-.eTable:	dc.w	.e02 - .e02
-			dc.w	.e03 - .e02
-			dc.w	.e04 - .e02
-			dc.w	.e05 - .e02
-			dc.w	.e06 - .e02
-			dc.w	.e07 - .e02
-			dc.w	.e08 - .e02
-			dc.w	.e09 - .e02
-			dc.w	.e10 - .e02
-			dc.w	.e10 - .e02
+.eTable:	dc.w	.e02-.e02
+			dc.w	.e03-.e02
+			dc.w	.e04-.e02
+			dc.w	.e05-.e02
+			dc.w	.e06-.e02
+			dc.w	.e07-.e02
+			dc.w	.e08-.e02
+			dc.w	.e09-.e02
+			dc.w	.e10-.e02
+			dc.w	.e10-.e02
+
 .e02:		dc.b	'Bus error',10,0
 .e03:		dc.b	'Address error',10,0
 .e04:		dc.b	'Illegal instruction',10,0
@@ -1250,6 +1262,7 @@ pSuperStack:		dc.l	LDOS_SUPERSTACK_SIZE|LDOS_MEM_ANY_RAM
 
 	rsreset
 	
+; nextFx struct
 m_ad:				rs.l	1
 m_size:				rs.l	1
 m_packedSize:		rs.l	1
@@ -1257,11 +1270,13 @@ m_flags:			rs.w	1
 m_arg:				rs.w	1
 m_secStart:			rs.w	1
 m_secCount:			rs.w	1
+m_argd1:			rs.l	1
+m_nextFxSize:		rs.w	0
 					
 diskOffset:			ds.l	1
 currentFile:		dc.w	0
 qVBL:				dc.l	0
-nextFx:				dc.l	0,0,0,0,0
+nextFx:				dcb.b	m_nextFxSize,0
 LSMusic:			dc.l	0
 LSBank:				dc.l	0
 LSPInfos:			dc.l	0
