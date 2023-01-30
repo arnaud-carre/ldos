@@ -41,7 +41,8 @@ DEBUG_SCREEN_AD			=	$78000
 DEBUG_REGS_ZONE			=	DEBUG_SCREEN_AD+DEBUG_SCREEN_SIZE		; 8 dn + 9an + pc + sr
 DEBUG_BSS_ZONE			=	DEBUG_REGS_ZONE+256
 
-DEPACK_IN_PLACE_MARGIN	=	24*1024;
+DEPACK_IN_PLACE_MARGIN		=	24*1024;
+DISK_SECTOR_ALIGN_MARGIN	=	512*2		; even a 4 bytes file could end up loading 2 sectors of 512 if at wrong boundary
 
 MEM_ALLOCATOR_DEBUG		=	0				; fill up memory blocks with CDCDCDCD when FREE
 MEM_SIZE_MASK			=	$00fffff8		; size always 8 bytes aligned 

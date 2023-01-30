@@ -633,7 +633,7 @@ nextEXEDoAlloc:
 		move.b	#MEMLABEL_PRECACHED_FX,(SVAR_CURRENT_MEMLABEL).w
 
 		move.l	m_size(a6),d0
-		addi.l	#DEPACK_IN_PLACE_MARGIN,d0	; unpacked size
+		addi.l	#DEPACK_IN_PLACE_MARGIN+DISK_SECTOR_ALIGN_MARGIN,d0	; unpacked size
 		
 		btst.b	#kLDOSLsBankFile,(nextFx+m_flags+1)(pc)	; Try to directly load in CHIP if music file
 		beq.s	.normal
@@ -656,7 +656,7 @@ nextEXEDoAlloc:
 
 		move.l	m_packedSize(a6),d0
 		move.l	m_size(a6),d1
-		addi.l	#DEPACK_IN_PLACE_MARGIN,d1
+		addi.l	#DEPACK_IN_PLACE_MARGIN-DISK_SECTOR_ALIGN_MARGIN,d1
 		sub.l	d0,d1						; offset
 		add.l	(a0),d1						; loading AD
 		lea		alignedDmaLoadAd(pc),a0
