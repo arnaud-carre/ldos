@@ -853,9 +853,9 @@ ispSet:		lea		.supervisor(pc),a0
 
 .supervisor:
 			; set SSP
-			move.l	pSuperStack(pc),a0
-			move.l	2(a7),-(a0)
-			move.w	(a7),-(a0)
+			move.l	pSuperStack(pc),a0	; TRAP #xx is a 4 words stack frame on >= 68020
+			move.l	4(a7),-(a0)			; so copy 8 bytes of stack frame (680x0 fix!)
+			move.l	(a7),-(a0)
 			move.l	a0,a7
 			rte
 
