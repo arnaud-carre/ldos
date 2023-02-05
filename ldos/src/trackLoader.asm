@@ -269,10 +269,18 @@ lwait:		bsr.s	.lwait
 .lwait:		rts
 
 
+unknownInterrupt:
+			move.w	$dff01e,d6
+			move.w	$dff01a,d7
+			lea		.txt(pc),a0
+			trap	#0
+.txt:		dc.b	'Unknown interrupt!',0
+			even
+
 floppyInt:
 
 			btst	#1,$dff01f
-			beq		unknownInterrupt
+			beq.s	unknownInterrupt
 
 			movem.l	d0/a0/a1/a6,-(a7)
 

@@ -75,6 +75,8 @@ entry:
 		move.w	d0,$9a(a6)		;desactive toutes les ITs
 		move.w	d0,$9c(a6)
 		move.w	d0,$9e(a6)
+		move.w	#$0200,$100(a6)	; switch off bitplan
+		move.w	#$000,$180(a6)
 
 	; clear sprites
 		bsr	clearSprites
@@ -89,10 +91,6 @@ entry:
 		
 		tst.l	m_hddBuffer1(a7)
 		bne		.memInit
-
-	; floppy mode: set up boot fade out
-		lea		startupFade(pc),a0
-		move.w	#$fff,(a0)
 
 		; always suppose CHIP start at $0
 		move.l	m_chipStart(a7),d0
@@ -212,7 +210,6 @@ kernelCrcStart:
 kernelStart:
 		bsr		vectorSet
 		
-		clr.w	(SVAR_VBL_COUNT).w
 		bsr		trackloaderInit
 		
 		bsr		systemInstall
@@ -495,26 +492,6 @@ waitScanlines:
 			dbf		d0,.twait
 			movem.l	(a7)+,d0-d1/a0
 			rts
-
-			
-installVBlank:
-			bsr		checkCustomVbl
-			lea		qVBL(pc),a1
-			move.l	a0,(a1)
-			rts
-
-
-checkCustomVbl:	
-				pea		(a0)
-				lea		vblSystem(pc),a0
-				cmp.l	$6c.w,a0
-				beq.s	.ok
-				lea		.txt(pc),a0
-				trap	#0
-.ok:			move.l	(a7)+,a0
-				rts
-.txt:			dc.b	"VBLANK function called but",10,"custom $6c installed",0
-				even
 
 
 ; a0: src ( aligned on 2 )
@@ -820,48 +797,6 @@ loadNextFile:
 			bsr		allocAndLoadFile
 
 			rts
-
-vblSystem:	btst	#5,$dff01f
-			beq		unknownInterrupt
-			move.l	d0,-(a7)
-
-			move.w	startupFade(pc),d0
-			bmi.s	.noFade
-
-			move.w	d0,$dff180
-			pea		(a0)
-			lea		startupFade(pc),a0
-			subi.w	#$111,(a0)
-			move.l	(a7)+,a0
-.noFade:
-	
-			move.l	qVBL(pc),d0
-			beq.s	.noUserCallback
-			movem.l	d1-a6,-(a7)
-			move.l	d0,a0
-			jsr		(a0)
-			movem.l	(a7)+,d1-a6
-.noUserCallback:
-			move.l	(a7)+,d0
-			addq.w	#1,(SVAR_VBL_COUNT).w
-			move.w	#1<<5,$dff09c		;clear VBL interrupt bit
-			move.w	#1<<5,$dff09c		;clear VBL interrupt bit
-			nop
-unRTE:		rte
-			
-unknownInterrupt:
-			move.w	$dff01e,d7
-			illegal
-			nop
-			; here maybe a pending interrupt is here, we should clear the bit
-;			move.w	d0,-(a7)
-;			move.w	$dff01e,d0
-;			bclr	#15,d0
-;			move.w	d0,$dff09c
-;			move.w	d0,$dff09c
-;			move.w	(a7)+,d0
-;			nop
-;unRTE:		rte
 		
 		
 ldos50Hz:	
@@ -948,7 +883,7 @@ vectorSet:
 			dbf		d0,.set
 			lea		assertVector(pc),a0
 			move.l	a0,$80.w
-			rte					; back to user land
+unRTE:		rte					; back to user land
 
 			
 pollVSync:	btst	#0,$dff005
@@ -983,13 +918,7 @@ systemInstall:
 			bsr		clearSprites
 			
 .skip:
-			lea		qVBL(pc),a0
-			clr.l	(a0)
-			lea		vblSystem(pc),a0
-			move.l	a0,$6c.w
 			move.w	#$8000|(1<<4)|(1<<9),$dff096		; DMA disk enabled
-			move.w	#$c000|(1<<5),$dff09a		; Enable IRQ3 (vbl)
-
 			rts
 			
 cia50HzInstall:
@@ -1016,7 +945,7 @@ cia50HzInstall:
 
 			move.w 	#(1<<13),$dff09c		; clear any req CIA
 		
-			move.w 	#$e000,$dff09a	; CIA interrupt enabled
+			move.w 	#$8000|(1<<13),$dff09a	; CIA interrupt enabled
 			movem.l	(a7)+,d0-d1/a0
 			rts
 
@@ -1298,7 +1227,6 @@ m_nextFxSize:		rs.w	0
 					
 diskOffset:			ds.l	1
 currentFile:		dc.w	0
-qVBL:				dc.l	0
 nextFx:				dcb.b	m_nextFxSize,0
 LSMusic:			dc.l	0
 LSBank:				dc.l	0
@@ -1309,7 +1237,6 @@ sectorOffset:		ds.w	1
 bMusicPlay:			dc.w	0
 musicTick:			dc.l	0
 clockTick:			dc.l	0
-startupFade:		dc.w	-1		; no startup fade by default (if HDD mode)
 
 copperListData:
 		dc.l	$01fc0000
