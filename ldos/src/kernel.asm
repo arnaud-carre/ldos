@@ -902,6 +902,8 @@ systemInstall:
 .waitb:		btst	#6,$dff002
 			bne.s	.waitb
 
+			bsr		ispSet
+			
 			lea		kernelLibrary(pc),a0
 			move.l	a0,(LDOS_BASE).w
 			
