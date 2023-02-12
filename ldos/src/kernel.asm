@@ -251,6 +251,7 @@ kernelLibrary:
 			bra.w	persistentFakeTrash
 			bra.w	loadFileCustom
 			bra.w	setNextFileId
+			bra.w	setNextFxArg
 			
 			
 			opt o+		; enable
@@ -781,11 +782,14 @@ loadFileRaw:
 
 			rts
 
+setNextFxArg:
+			lea		nextFx(pc),a0
+			move.l	d1,m_argd1(a0)
+			rts
+
 setNextFileId:
 			lea		currentFile(pc),a0
 			move.w	d0,(a0)
-			lea		nextFx(pc),a0
-			move.l	d1,m_argd1(a0)
 			rts
 
 ;-----------------------------------------------------------------		
