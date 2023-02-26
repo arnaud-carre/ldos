@@ -680,7 +680,7 @@ getFSInfos:
 			lsl.w	#4,d0				; FAT entry is 4 DWORDS: Floppy disk offset, Packed size, Unpacked size, user Arg
 
 .infloop:	cmp.w	fatSize(pc),d0		; special case to test each FX. when we reach end of disk, loop here
-			beq.s	.infloop
+			bge		.notf
 		
 			lea	directory(pc),a5
 			add.w	d0,a5
@@ -711,7 +711,15 @@ getFSInfos:
 			move.w	d0,m_secStart(a6)
 			move.w	d1,m_secCount(a6)
 			rts
-		
+
+.notf:		lsr.w	#4,d0
+			move.w	d0,-(a7)
+			movea.l	a7,a1
+			lea		.txt(pc),a0
+			trap	#0
+.txt:		dc.b	'File index %w does not exist!',0
+			even
+
 		
 ;-----------------------------------------------------------------		
 ; d0: screen number ( script.txt order )		
@@ -853,6 +861,8 @@ LSP_DmaconIrq:
 ispSet:		lea		.supervisor(pc),a0
 			move.l	a0,$80.w
 			trap	#0
+			lea		assertVector(pc),a0
+			move.l	a0,$80.w
 			rts
 
 .supervisor:
