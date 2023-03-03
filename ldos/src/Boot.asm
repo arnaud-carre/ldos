@@ -52,8 +52,6 @@ start0:
 .noFast:
 
 		move.l	m_chipStart(a7),a0
-		add.l	m_chipSize(a7),a0
-		sub.l	#64*1024,a0
 		move.l	a0,m_buffer(a7)
 
 		move.l	4.w,a6
