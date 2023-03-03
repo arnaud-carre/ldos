@@ -336,7 +336,10 @@ runLoadedFile:
 			bsr		relocLSBank
 			bra.s	.next
 
-.noLsBank:	lea		.txtUnknowFile(pc),a0
+.noLsBank:	
+			move.w	currentFile(pc),-(a7)
+			movea.l	a7,a1
+			lea		.txtUnknowFile(pc),a0
 			trap	#0
 
 .next:		lea		(nextFx+m_ad)(pc),a0
@@ -403,8 +406,7 @@ runLoadedFile:
 
 			rts
 	
-		
-.txtUnknowFile:	dc.b	"Unknow file!",0
+.txtUnknowFile:	dc.b	"Unable to execute file id #%w",0
 				even
 								
 installCopperList:
@@ -734,7 +736,10 @@ loadFileCustom:
 			lea		nextFx(pc),a6
 			move.l	a0,m_ad(a6)
 
-			bra		loadFileRaw
+			bsr		loadFileRaw
+			lea		nextFx(pc),a6
+			clr.l	m_ad(a6)
+			rts
 		
 ;-----------------------------------------------------------------		
 ; d0: screen number ( script.txt order )		
