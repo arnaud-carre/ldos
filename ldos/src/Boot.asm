@@ -27,7 +27,7 @@ bootStart:
 	bra.s	start0		; 12
 	dc.b	'  '
 ;	dc.b	'0123456789abcdef'
-	dc.b	'LDOS v1.30 Amiga'
+	dc.b	'LDOS v1.40 Amiga'
 	dc.b	'-Leonard/OXYGENE'
 	even
 	

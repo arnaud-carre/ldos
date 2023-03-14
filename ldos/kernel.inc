@@ -13,6 +13,7 @@ LDOS_VERSION				=	130
 
 LDOS_BASE					=	$4
 LDOS_MUSIC_PLAYER_ENABLED	=	1
+LDOS_BLACKBOARD_SIZE		=	128		; 128 bytes
 
 
 ; Pre-load & depack the next FX. Once the current FX end (using RTS) the next one
@@ -107,9 +108,11 @@ LDOS_LOAD_FILE_CUSTOM				=	17*4
 ; Input d0.w : fx file id
 LDOS_SET_NEXT_FX_ID					=	18*4
 
-; Set a next FX arg as d1 register
-; Input d1.l : optional user argument passed to the next FX in d1
-LDOS_SET_NEXT_FX_ARG_D1				=	19*4
+; Small memory area to share input/output data between FXs
+; This small shared buffer is garantee to be cleared at boot time
+; Input: none
+; Output: a0: blackboard buffer ( LDOS_BLACKBOARD_SIZE bytes )
+LDOS_GET_BLACKBOARD_ADDR			=	19*4
 
 
 LDOS_MEM_ANY_RAM		=	(1<<30)

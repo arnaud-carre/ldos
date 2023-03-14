@@ -251,7 +251,7 @@ kernelLibrary:
 			bra.w	persistentFakeTrash
 			bra.w	loadFileCustom
 			bra.w	setNextFileId
-			bra.w	setNextFxArg
+			bra.w	getBlackboardAddr
 			
 			
 			opt o+		; enable
@@ -795,9 +795,8 @@ loadFileRaw:
 
 			rts
 
-setNextFxArg:
-			lea		nextFx(pc),a0
-			move.l	d1,m_argd1(a0)
+getBlackboardAddr:
+			lea		blackBoardBuffer(pc),a0
 			rts
 
 setNextFileId:
@@ -1209,7 +1208,8 @@ kernelCrcEnd:
 	; Light Speed Module Player
 	;-------------------------------------------------------------------				
 		include	"LightSpeedPlayer.asm"
-		
+
+blackBoardBuffer:	dcb.b	LDOS_BLACKBOARD_SIZE,0
 
 crcProceedInfo:
 		dc.w	kernelCrcStart-kernelStart, kernelCrcEnd-kernelCrcStart,0

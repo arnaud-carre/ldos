@@ -500,7 +500,7 @@ static	bool	AdfExport(char* argv[], const ldosFile* files, int count, const ldos
 
 int	main(int _argc, char *_argv[])
 {
-	printf("LDOS Installer v1.30\n");
+	printf("LDOS Installer v1.40\n");
 	printf("Written by Arnaud Carr%c.\n\n", 0x82);
 
 	assert(16 == sizeof(ldosFatEntry));
