@@ -495,7 +495,7 @@ MFMDecodeTrackCallback:
 			subq.w	#1,m_sectorCount(a5)
 			subq.w	#1,trkDecodedSecCount(a6)
 
-.skip:		lea		(56+512*2)(a0),a0					; skip odd bits for next turn
+.skip:		lea		(512*2)(a0),a0					; skip odd bits for next turn
 			tst.w	m_sectorCount(a5)
 			bne		.sectorLoop
 
@@ -559,7 +559,7 @@ MFMBootSectorDecode:
 			moveq	#0,d0
 			bra.s	.back
 			
-.skip:		lea		(56+512*2)(a0),a0
+.skip:		lea		(512*2)(a0),a0
 			dbf		d7,.sectorLoop
 .error:		moveq	#-1,d0
 .back:		movem.l	(a7)+,d7/a1-a3
@@ -572,17 +572,6 @@ MFMBootSectorDecode:
 MFMSectorDecode:
 			movem.l	d1-d4/a0-a2,-(a7)
 			move.l	#$55555555,d2			; clear les bits de check.
-
-		; check header CRC
-			move.l	44(a0),d1
-			moveq	#10-1,d3
-.crcLoop:	move.l	(a0)+,d0
-			eor.l	d0,d1
-			dbf		d3,.crcLoop
-			and.l	d2,d1
-			bne		diskCrcError
-
-			addq.w	#8,a0
 			movem.l	(a0)+,d0/d3
 			and.l	d2,d0
 			and.l	d2,d3
@@ -619,9 +608,19 @@ MFMSearchNextSector:
 			cmpi.w	#DISK_SYNC,(a0)
 			beq.s	.search
 
+		; check header CRC
+			move.l	44(a0),d1
+			moveq	#10-1,d3
+.crcLoop:	move.l	(a0)+,d0
+			eor.l	d0,d1
+			dbf		d3,.crcLoop
+			and.l	#$55555555,d1
+			bne		diskCrcError
+			addq.w	#8,a0
+
 	; Cherche le numero de secteur physique.
-			move.w	2(a0),d0
-			move.w	6(a0),d1
+			move.w	-48+2(a0),d0
+			move.w	-48+6(a0),d1
 			and.w	#$5555,d0
 			and.w	#$5555,d1
 			add.w	d0,d0
