@@ -572,7 +572,17 @@ MFMBootSectorDecode:
 MFMSectorDecode:
 			movem.l	d1-d4/a0-a2,-(a7)
 			move.l	#$55555555,d2			; clear les bits de check.
-			lea		48(a0),a0
+
+		; check header CRC
+			move.l	44(a0),d1
+			moveq	#10-1,d3
+.crcLoop:	move.l	(a0)+,d0
+			eor.l	d0,d1
+			dbf		d3,.crcLoop
+			and.l	d2,d1
+			bne		diskCrcError
+
+			addq.w	#8,a0
 			movem.l	(a0)+,d0/d3
 			and.l	d2,d0
 			and.l	d2,d3
