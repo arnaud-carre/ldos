@@ -298,30 +298,8 @@ floppyInt:
 			move.w	#$4e41,(a0)					; patch with trap #1
 
 			lea		decoderPut(pc),a0
-			eori.w	#16,(a0)				; flip buffer
+;			eori.w	#16,(a0)				; flip buffer
 
-			; now check if there is still sectors to go
-			move.w	trkSectorsInTrack(a6),d0
-			sub.w	d0,trkSectorCount(a6)
-			bne.s	.cont
-			
-			move.w	#TRKS_MOTOR_OFF,trkState(a6)
-			clr.w	trkDiskBusy(a6)
-			move.w	#50,trkMotorOffTimeOut(a6)
-			bra.s	.back
-			
-.cont:		bpl.s	.noassert
-			lea		.txt(pc),a0
-			trap	#0
-.txt:		dc.b	'trkSectorCount!',0
-			even
-.noassert:
-		
-			addq.w	#1,trkWantedTrack(a6)
-			clr.w	trkFirstSector(a6)
-			move.w	#TRKS_SEEK,trkState(a6)
-
-.back:
 			move.w	$dff006,d0
 			lsl.w	#8,d0
 			add.b	$bfd800,d0
@@ -463,19 +441,46 @@ MFMDecodeTrackCallback:
 			lea		trackloaderVars(pc),a6
 			lea		decodeBuffers(pc),a5
 			add.w	decoderGet(pc),a5
+
+		; backup values for retry
+			move.w	m_sectorCount(a5),-(a7)
+			move.w	trkDecodedSecCount(a6),-(a7)
+			
+.retry:
+			move.w	(a7),trkDecodedSecCount(a6)
+;			move.w	2(a7),m_sectorCount(a5)
+
 .notReady:	tst.w	m_flag(a5)
 			beq.s	.notReady
+
+			clr.w	trkErrorCode(a6)
 
 			move.l	m_MFMCurrentPtr(a5),a0
 			lea		MFM_DMA_SIZE(a0),a2			; end buffer check
 			
+	IF 1
+			moveq	#7,d0
+			and.b	$dff006,d0
+			bne		.noerr
+			move.w	$dff006,d0
+			andi.w	#8191,d0
+			move.b	d0,0(a0,d0.w)	; patch
+.noerr:
+	ENDC
+
 .sectorLoop:
+
+;			moveq	#31,d0
+;			and.b	$dff006,d0
+;			beq		.diskSectorError
+
+
 			movea.l	a2,a1						; MFM buffer end
 			bsr		MFMSearchNextSector
 			tst.w	d0
-			bmi		diskSectorError
+			bmi		.diskSectorError
 			cmpi.w 	#11,d0
-			bge		diskSectorError
+			bge		.diskSectorError
 
 			move.w	m_track(a5),d1
 			lsl.w	#8,d1
@@ -491,13 +496,43 @@ MFMDecodeTrackCallback:
 			add.w	d0,a1							
 			bsr		MFMSectorDecode			
 			tst.b	d0
-			bne.s	diskCrcError
+			bne		.diskSectorError
 			subq.w	#1,m_sectorCount(a5)
 			subq.w	#1,trkDecodedSecCount(a6)
 
 .skip:		lea		(512*2)(a0),a0					; skip odd bits for next turn
 			tst.w	m_sectorCount(a5)
 			bne		.sectorLoop
+
+		; everything is decoded without error
+			addq.w	#4,a7			; skip backup values
+
+			; now check if there is still sectors to go
+			move.w	trkSectorsInTrack(a6),d0
+			sub.w	d0,trkSectorCount(a6)
+			bne.s	.cont
+			
+			move.w	#TRKS_MOTOR_OFF,trkState(a6)
+			clr.w	trkDiskBusy(a6)
+			move.w	#50,trkMotorOffTimeOut(a6)
+			bra.s	.back
+			
+.cont:		bpl.s	.noassert
+			lea		.txt(pc),a0
+			trap	#0
+.txt:		dc.b	'trkSectorCount!',0
+			even
+.noassert:
+		
+			addq.w	#1,trkWantedTrack(a6)
+			clr.w	trkFirstSector(a6)
+;			move.w	#TRKS_SEEK,trkState(a6)
+			move.w	#TRKS_IDLE,trkState(a6)
+
+.back:
+
+
+
 
 			moveq	#11,d0
 			sub.w	m_sectorStart(a5),d0
@@ -510,11 +545,27 @@ MFMDecodeTrackCallback:
 			
 			; advance "get" pointer (decoder)
 			lea		decoderGet(pc),a0
-			eori.w	#16,(a0)
+;			eori.w	#16,(a0)
 
+	move.w	#$0f0,$dff180
+
+			tst.w	trkDecodedSecCount(a6)
+			beq.s	.done
+			move.w	#TRKS_SEEK,trkState(a6)				; idle state (DMA interrupt should fire soon)
+.done:
 			movem.l	(a7)+,d0-a6
 			rts
-				
+
+
+.diskSectorError:
+	move.w	#$f00,$dff180
+			; mark decode buffer as free (so trackloader can use it)
+			clr.w	m_flag(a5)
+			bsr		stateReadTrack
+		move.w	d0,$100.w
+			bra		.retry
+
+
 					
 stateMotorOff:	subq.w	#1,trkMotorOffTimeOut(a6)
 				bne.s	.notYet
@@ -530,12 +581,15 @@ diskCrcError:
 .txt:		dc.b	'Disk Trackload CRC Error',0
 			even
 			
-diskSectorError:
+				
+trkError:
+			move.w	d1,-(a7)
+			move.l	a7,a1
 			lea		.txt(pc),a0
 			trap	#0
-.txt:		dc.b	'MFM Sector Error',0
+.txt:		dc.b	'MFM Track id error ($%w)',0
 			even
-				
+
 ; a0: MFM data
 ; a1: 512 bytes dest buffer
 ; returns: d0=0 means OK
@@ -602,7 +656,7 @@ MFMSectorDecode:
 MFMSearchNextSector:
 			movem.l	d1,-(a7)
 .search		cmpa.l	a0,a1
-			ble.s	.overrun
+			ble.s	.error
 			cmpi.w	#DISK_SYNC,(a0)+
 			bne.s	.search
 			cmpi.w	#DISK_SYNC,(a0)
@@ -610,28 +664,33 @@ MFMSearchNextSector:
 
 		; check header CRC
 			move.l	44(a0),d1
+			move.l	#$55555555,d2
 			moveq	#10-1,d3
 .crcLoop:	move.l	(a0)+,d0
 			eor.l	d0,d1
 			dbf		d3,.crcLoop
-			and.l	#$55555555,d1
-			bne		diskCrcError
+			and.l	d2,d1
+			bne.s	.error
 			addq.w	#8,a0
 
 	; Cherche le numero de secteur physique.
-			move.w	-48+2(a0),d0
-			move.w	-48+6(a0),d1
-			and.w	#$5555,d0
-			and.w	#$5555,d1
-			add.w	d0,d0
-			or.w	d1,d0
+			move.l	-48(a0),d0
+			move.l	-48+4(a0),d1
+			and.l	d2,d0
+			and.l	d2,d1
+			add.l	d0,d0
+			or.l	d1,d0
+			move.l	d0,d1
+			swap	d1
+			cmp.b	m_track+1(a5),d1
+			bne		trkError
 			lsr.w	#8,d0		; sector number
 			bra.s	.back
 
-.overrun:	moveq	#-1,d0
+.error:		moveq	#-1,d0
 .back:		movem.l	(a7)+,d1
 			rts
-			
+		
 				
 ; Main trackload ASYNC function
 ; input: 	d0.w  sector start
@@ -675,7 +734,8 @@ trkSectorsInTrack:	rs.w	1
 trkFirstSector:		rs.w	1
 trkMotorOffTimeOut:	rs.w	1
 trkEntropyValue:	rs.w	1
-trkSizeOf:			rs.w	1
+trkErrorCode:		rs.w	1
+trkSizeOf:			rs.w	0
 		
 trackloaderVars:	ds.b	trkSizeOf
 
@@ -686,5 +746,6 @@ m_flag				rs.w	1
 m_sectorStart:		rs.w	1
 m_track:			rs.w	1
 m_sectorCount:		rs.w	1
+
 
 decodeBuffers:		ds.b	16*2
