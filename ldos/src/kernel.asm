@@ -1273,8 +1273,7 @@ nextEXEDepacked:	dc.l	0
 alignedDmaLoadAd:	dc.l	0
 
 nextEXEAllocs:
-pMFMRawBuffer1:		dc.l	0	;MFM_DMA_SIZE
-pMFMRawBuffer2:		dc.l	0	;MFM_DMA_SIZE
+pMFMRawBuffer:		dc.l	0	;MFM_DMA_SIZE
 pArj7Buffer:		dc.l	0	;13320 | LDOS_MEM_ANY_RAM		; ARJ Method 7 depacking buffer
 					dc.l	-2
 
