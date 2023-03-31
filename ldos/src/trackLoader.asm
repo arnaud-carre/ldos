@@ -536,6 +536,14 @@ diskSectorError:
 .txt:		dc.b	'MFM Sector Error',0
 			even
 				
+trkError:
+			move.w	d1,-(a7)
+			move.l	a7,a1
+			lea		.txt(pc),a0
+			trap	#0
+.txt:		dc.b	'MFM Track id error ($%w)',0
+			even
+
 ; a0: MFM data
 ; a1: 512 bytes dest buffer
 ; returns: d0=0 means OK
@@ -610,21 +618,26 @@ MFMSearchNextSector:
 
 		; check header CRC
 			move.l	44(a0),d1
+			move.l	#$55555555,d2
 			moveq	#10-1,d3
 .crcLoop:	move.l	(a0)+,d0
 			eor.l	d0,d1
 			dbf		d3,.crcLoop
-			and.l	#$55555555,d1
+			and.l	d2,d1
 			bne		diskCrcError
 			addq.w	#8,a0
 
 	; Cherche le numero de secteur physique.
-			move.w	-48+2(a0),d0
-			move.w	-48+6(a0),d1
-			and.w	#$5555,d0
-			and.w	#$5555,d1
-			add.w	d0,d0
-			or.w	d1,d0
+			move.l	-48(a0),d0
+			move.l	-48+4(a0),d1
+			and.l	d2,d0
+			and.l	d2,d1
+			add.l	d0,d0
+			or.l	d1,d0
+			move.l	d0,d1
+			swap	d1
+			cmp.b	m_track+1(a5),d1
+			bne		trkError
 			lsr.w	#8,d0		; sector number
 			bra.s	.back
 
