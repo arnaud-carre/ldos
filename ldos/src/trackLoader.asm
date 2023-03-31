@@ -15,9 +15,6 @@
 ; decoding ptr is updated, and main thread could depack at the same time
 ; (depacking routine has a fence using decoding ptr in case of faster depacking than loading)
 
-; TODO:
-;	a) handle retry in case of error (because of (a) retry could imply a seek back)
-
 
 TRKS_IDLE			=	0
 TRKS_SEEK			=	1
@@ -26,7 +23,7 @@ TRKS_MOTOR_OFF		=	3
 
 DISK_SYNC			=	$4489
 
-
+SIMULATE_ERROR		=	0
 
 loaderCrcStart:
 
@@ -154,7 +151,6 @@ trackLoadStart:
 			move.b	#MEMLABEL_TRACKLOAD,(SVAR_CURRENT_MEMLABEL).w
 			lea		nextEXEAllocs(pc),a0
 			move.l	#MFM_DMA_SIZE,(a0)+
-			move.l	#MFM_DMA_SIZE,(a0)+
 			move.l	#13320|LDOS_MEM_ANY_RAM,(a0)+
 			lea		nextEXEAllocs(pc),a0
 			bsr		batchAllocator
@@ -221,17 +217,7 @@ trackLoadStart:
 			bsr		seekTrack0
 			
 .ok:
-			lea		decodeBuffers(pc),a0
-			lea		decodeBuffers+16(pc),a1
-			move.l	pMFMRawBuffer1(pc),m_MFMRawBuffer(a0)
-			move.l	pMFMRawBuffer2(pc),m_MFMRawBuffer(a1)
-			clr.w	m_flag(a0)
-			clr.w	m_flag(a1)
-			lea		decoderGet(pc),a0
-			clr.w	(a0)
-			lea		decoderPut(pc),a0
-			clr.w	(a0)
-
+			clr.w	trkDmaFlag(a6)
 			move.w	#TRKS_SEEK,trkState(a6)
 			lea		trkDiskBusy(a6),a1
 			
@@ -270,11 +256,12 @@ lwait:		bsr.s	.lwait
 
 
 unknownInterrupt:
-			move.w	$dff01e,d6
-			move.w	$dff01a,d7
+			move.w	$dff01e,-(a7)
+			move.w	$dff01a,-(a7)
+			movea.l	a7,a1
 			lea		.txt(pc),a0
 			trap	#0
-.txt:		dc.b	'Unknown interrupt!',0
+.txt:		dc.b	'Unknown interrupt! ($%w,$%w)',0
 			even
 
 floppyInt:
@@ -285,20 +272,14 @@ floppyInt:
 			movem.l	d0/a0/a1/a6,-(a7)
 
 			; first, set the decode buffer
-			lea		decodeBuffers(pc),a1
-			add.w	decoderPut(pc),a1
 			lea		trackloaderVars(pc),a6
-			move.w	trkFirstSector(a6),m_sectorStart(a1)
-			move.w	trkTrack(a6),m_track(a1)
-			move.w	trkSectorsInTrack(a6),m_sectorCount(a1)
-			move.l	m_MFMRawBuffer(a1),m_MFMCurrentPtr(a1)
-			move.w	#-1,m_flag(a1)			; marker decoder buffer as ready for async decoder
+			move.w	trkFirstSector(a6),m_sectorStart(a6)
+			move.w	trkTrack(a6),m_track(a6)
+			move.w	trkSectorsInTrack(a6),m_sectorCount(a6)
+			move.w	#-1,trkDmaFlag(a6)			; marker decoder buffer as ready for async decoder
 
 			lea		MFMDecoderPatch(pc),a0
 			move.w	#$4e41,(a0)					; patch with trap #1
-
-			lea		decoderPut(pc),a0
-;			eori.w	#16,(a0)				; flip buffer
 
 			move.w	$dff006,d0
 			lsl.w	#8,d0
@@ -374,11 +355,8 @@ stateSeek:
 
 
 stateReadTrack:
-				lea		decodeBuffers(pc),a1
-				add.w	decoderPut(pc),a1
-				tst.w	m_flag(a1)
+				tst.w	trkDmaFlag(a6)
 				bne		.busy					; can't start DMA loading, decoder has not finished (should not)
-
 				
 				; compute number of sectors to read in this track
 				move.w	trkFirstSector(a6),d0
@@ -389,7 +367,7 @@ stateReadTrack:
 .ok:			sub.w	trkFirstSector(a6),d0
 				move.w	d0,trkSectorsInTrack(a6)
 
-				move.l	m_MFMRawBuffer(a1),a0
+				move.l	pMFMRawBuffer(pc),a0
 				bsr.s	readTrackCMD
 				
 				move.w	#TRKS_IDLE,trkState(a6)				; idle state (DMA interrupt should fire soon)
@@ -419,18 +397,15 @@ waitDiskReady:	btst 	#1,$dff01f
 				rts
 
 MFMDecoderTickIfAny:
-;			move.w	#$ff0,$dff180
 			pea		(a1)
-			lea		decodeBuffers(pc),a1
-			add.w	decoderGet(pc),a1
-			tst.w	m_flag(a1)
+			lea		trackloaderVars(pc),a1
+			tst.w	trkDmaFlag(a1)
 			beq.s	.nothing
 			bsr.s	MFMDecodeTrackCallback
 
 .nothing:	lea		MFMDecoderPatch(pc),a1
 			move.w	#$4e71,(a1)
 			move.l	(a7)+,a1
-;			move.w	#$0,$dff180
 			rte
 
 
@@ -439,40 +414,32 @@ MFMDecodeTrackCallback:
 			movem.l	d0-a6,-(a7)
 
 			lea		trackloaderVars(pc),a6
-			lea		decodeBuffers(pc),a5
-			add.w	decoderGet(pc),a5
 
 		; backup values for retry
-			move.w	m_sectorCount(a5),-(a7)
+			move.w	m_sectorCount(a6),-(a7)
 			move.w	trkDecodedSecCount(a6),-(a7)
 			
 .retry:
 			move.w	(a7),trkDecodedSecCount(a6)
 ;			move.w	2(a7),m_sectorCount(a5)
 
-.notReady:	tst.w	m_flag(a5)
+.notReady:	tst.w	trkDmaFlag(a6)
 			beq.s	.notReady
 
-			clr.w	trkErrorCode(a6)
-
-			move.l	m_MFMCurrentPtr(a5),a0
+			move.l	pMFMRawBuffer(pc),a0
 			lea		MFM_DMA_SIZE(a0),a2			; end buffer check
-			
-	IF 1
-			moveq	#7,d0
+
+		; simulate error by patching random byte	
+	IF SIMULATE_ERROR
+			moveq	#3,d0
 			and.b	$dff006,d0
 			bne		.noerr
 			move.w	$dff006,d0
-			andi.w	#8191,d0
-			move.b	d0,0(a0,d0.w)	; patch
+			andi.w	#8190,d0
+			move.w	d0,0(a0,d0.w)		; scratch MFM buffer with bad data
 .noerr:
 	ENDC
-
 .sectorLoop:
-
-;			moveq	#31,d0
-;			and.b	$dff006,d0
-;			beq		.diskSectorError
 
 
 			movea.l	a2,a1						; MFM buffer end
@@ -482,14 +449,14 @@ MFMDecodeTrackCallback:
 			cmpi.w 	#11,d0
 			bge		.diskSectorError
 
-			move.w	m_track(a5),d1
+			move.w	m_track(a6),d1
 			lsl.w	#8,d1
 			move.b	d0,d1		; d1 = track|sector
 			cmp.w	trkTSBegin(a6),d1
 			bcs.s	.skip
 			cmp.w	trkTSEnd(a6),d1
 			bhi.s	.skip
-			sub.w	m_sectorStart(a5),d0
+			sub.w	m_sectorStart(a6),d0
 			lsl.w	#8,d0
 			add.w	d0,d0				; *512
 			move.l	(SVAR_LOAD_PTR).w,a1
@@ -497,11 +464,11 @@ MFMDecodeTrackCallback:
 			bsr		MFMSectorDecode			
 			tst.b	d0
 			bne		.diskSectorError
-			subq.w	#1,m_sectorCount(a5)
+			subq.w	#1,m_sectorCount(a6)
 			subq.w	#1,trkDecodedSecCount(a6)
 
 .skip:		lea		(512*2)(a0),a0					; skip odd bits for next turn
-			tst.w	m_sectorCount(a5)
+			tst.w	m_sectorCount(a6)
 			bne		.sectorLoop
 
 		; everything is decoded without error
@@ -526,7 +493,6 @@ MFMDecodeTrackCallback:
 		
 			addq.w	#1,trkWantedTrack(a6)
 			clr.w	trkFirstSector(a6)
-;			move.w	#TRKS_SEEK,trkState(a6)
 			move.w	#TRKS_IDLE,trkState(a6)
 
 .back:
@@ -535,20 +501,18 @@ MFMDecodeTrackCallback:
 
 
 			moveq	#11,d0
-			sub.w	m_sectorStart(a5),d0
+			sub.w	m_sectorStart(a6),d0
 			lsl.w	#8,d0
 			add.w	d0,d0
 			add.l	d0,(SVAR_LOAD_PTR).w
 
 			; mark decode buffer as free (so trackloader can use it)
-			clr.w	m_flag(a5)
+			clr.w	trkDmaFlag(a6)
 			
 			; advance "get" pointer (decoder)
-			lea		decoderGet(pc),a0
-;			eori.w	#16,(a0)
-
-	move.w	#$0f0,$dff180
-
+	IF SIMULATE_ERROR
+			move.w	#$0f0,$dff180
+	ENDC
 			tst.w	trkDecodedSecCount(a6)
 			beq.s	.done
 			move.w	#TRKS_SEEK,trkState(a6)				; idle state (DMA interrupt should fire soon)
@@ -558,11 +522,12 @@ MFMDecodeTrackCallback:
 
 
 .diskSectorError:
-	move.w	#$f00,$dff180
+		IF SIMULATE_ERROR
+			move.w	#$f00,$dff180
+		ENDC
 			; mark decode buffer as free (so trackloader can use it)
-			clr.w	m_flag(a5)
+			clr.w	trkDmaFlag(a6)
 			bsr		stateReadTrack
-		move.w	d0,$100.w
 			bra		.retry
 
 
@@ -575,13 +540,6 @@ stateMotorOff:	subq.w	#1,trkMotorOffTimeOut(a6)
 				bclr	#3,(a5)		; drive 0
 .notYet:		rts
 
-diskCrcError:
-			lea		.txt(pc),a0
-			trap	#0
-.txt:		dc.b	'Disk Trackload CRC Error',0
-			even
-			
-				
 trkError:
 			move.w	d1,-(a7)
 			move.l	a7,a1
@@ -682,7 +640,7 @@ MFMSearchNextSector:
 			or.l	d1,d0
 			move.l	d0,d1
 			swap	d1
-			cmp.b	m_track+1(a5),d1
+			cmp.b	m_track+1(a6),d1
 			bne		trkError
 			lsr.w	#8,d0		; sector number
 			bra.s	.back
@@ -717,10 +675,6 @@ hddLoadStart:
 
 loaderCrcEnd:
 				
-decoderPut:		dc.w	0
-decoderGet:		dc.w	0
-
-				
 		rsreset
 trkState:			rs.w	1
 trkDiskBusy:		rs.w	1
@@ -734,18 +688,10 @@ trkSectorsInTrack:	rs.w	1
 trkFirstSector:		rs.w	1
 trkMotorOffTimeOut:	rs.w	1
 trkEntropyValue:	rs.w	1
-trkErrorCode:		rs.w	1
-trkSizeOf:			rs.w	0
-		
-trackloaderVars:	ds.b	trkSizeOf
-
-	rsreset
-m_MFMRawBuffer:		rs.l	1
-m_MFMCurrentPtr:	rs.l	1
-m_flag				rs.w	1
+trkDmaFlag:			rs.w	1
 m_sectorStart:		rs.w	1
 m_track:			rs.w	1
 m_sectorCount:		rs.w	1
-
-
-decodeBuffers:		ds.b	16*2
+trkSizeOf:			rs.w	0
+		
+trackloaderVars:	ds.b	trkSizeOf
