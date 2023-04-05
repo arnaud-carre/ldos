@@ -209,7 +209,10 @@ graphicsLibName:	dc.b	'graphics.library',0
 kernelCrcStart:
 kernelStart:
 		bsr		vectorSet
-		
+
+		lea		cacheVars(pc),a0
+		move.w	#-1,m_cacheFileId(a0)
+
 		bsr		trackloaderInit
 		
 		bsr		systemInstall
@@ -252,6 +255,7 @@ kernelLibrary:
 			bra.w	loadFileCustom
 			bra.w	setNextFileId
 			bra.w	getBlackboardAddr
+			bra.w	cacheFile
 			
 			
 			opt o+		; enable
@@ -293,7 +297,6 @@ persistentChipTrash:
 			bsr		trashPersistentChip
 			lea		persistentChipAd(pc),a0
 			clr.l	(a0)+
-			clr.l	(a0)+
 			movem.l	(a7)+,a0			
 			rts
 			
@@ -302,15 +305,64 @@ persistentFakeTrash:
 			bsr		trashPersistentFake
 			lea		persistentFakeAd(pc),a0
 			clr.l	(a0)+
-			clr.l	(a0)+
 			movem.l	(a7)+,a0			
 			rts
 			
 userLoadNextFile:
 			bsr		loadNextFile
 			rts
-			
-			
+
+; input: d0.w File ID
+;		 d1.l final unpacked buffer size
+cacheFile:
+			lea		cacheVars(pc),a5
+			tst.w	m_cacheFileId(a5)
+			bpl		.cacheError
+			move.l	persistentFakeAd(pc),d2
+			bne		.cacheError
+
+			move.l	d1,m_cacheDestSize(a5)
+			move.w	d0,m_cacheFileId(a5)
+
+			bsr		getFSInfos
+
+			move.l	nextFx+m_size(pc),d0	; depacked size
+			addi.l	#DEPACK_IN_PLACE_MARGIN+DISK_SECTOR_ALIGN_MARGIN,d0	; unpacked size
+			bsr		persistentFakeAlloc
+
+			lea		nextEXEDepacked(pc),a0
+			move.l	d0,(a0)
+
+			lea		nextFx(pc),a6
+			move.l	m_packedSize(a6),d0
+			move.l	m_size(a6),d1
+			addi.l	#DEPACK_IN_PLACE_MARGIN-DISK_SECTOR_ALIGN_MARGIN,d1
+			sub.l	d0,d1						; offset
+			add.l	(a0),d1						; loading AD
+			lea		alignedDmaLoadAd(pc),a0
+			move.l	d1,(a0)
+
+			lea		nextFx(pc),a6
+
+			ori.w	#1<<kLDOSExeFile,m_flags(a6)	; hack to force type to LDOS exe
+
+			move.l	nextEXEDepacked(pc),m_ad(a6)
+			move.l	alignedDmaLoadAd(pc),a0
+
+			bsr		loadFileRaw
+
+			lea		nextFx(pc),a6
+			clr.l	m_ad(a6)
+
+			rts
+
+
+.cacheError:	lea		.txt(pc),a0
+				trap	#0
+.txt:			dc.b	'LDOS Cache file error',0
+				even
+
+
 runLoadedFile:		
 		; WARNING: to avoid memory fragmentation, the next FX is always moved back to low memory
 		; to do this, simply mark next FX pages as FREE, alloc a new block, and MOVE memory there.
@@ -741,9 +793,33 @@ loadFileCustom:
 			clr.l	m_ad(a6)
 			rts
 		
+
+;-----------------------------------------------------------------		
+depackCachedFile:
+			move.b	#MEMLABEL_PRECACHED_FX,(SVAR_CURRENT_MEMLABEL).w
+			move.l	cacheVars+m_cacheDestSize(pc),d0
+			bsr		allocAnyMem
+
+			lea		nextFx(pc),a6
+			move.l	d0,m_ad(a6)
+
+			move.l	d0,a1
+	move.w	d0,$100.w
+			move.l	persistentFakeAd(pc),a0
+			bsr		lz4_frame_depack
+
+			rts
+
+			include	"lz4_frame.asm"
+			even
+
+
 ;-----------------------------------------------------------------		
 ; d0: screen number ( script.txt order )		
 allocAndLoadFile:
+			lea		cacheVars(pc),a0
+			cmp.w	m_cacheFileId(a0),d0
+			beq		depackCachedFile
 
 			bsr		getFSInfos
 
@@ -1258,6 +1334,15 @@ sectorOffset:		ds.w	1
 bMusicPlay:			dc.w	0
 musicTick:			dc.l	0
 clockTick:			dc.l	0
+
+	rsreset
+
+m_cacheFileId:		rs.w	1
+m_cacheDestSize:	rs.l	1
+m_cacheSizeof:		rs.w	0
+
+cacheVars:			dcb.b	m_cacheSizeof,0
+
 
 copperListData:
 		dc.l	$01fc0000
