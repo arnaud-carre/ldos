@@ -327,20 +327,13 @@ cacheFile:
 			bsr		getFSInfos
 
 			move.l	nextFx+m_size(pc),d0	; depacked size
-			addi.l	#DEPACK_IN_PLACE_MARGIN+DISK_SECTOR_ALIGN_MARGIN,d0	; unpacked size
+			addi.l	#DISK_SECTOR_ALIGN_MARGIN,d0	; unpacked size
 			bsr		persistentFakeAlloc
 
 			lea		nextEXEDepacked(pc),a0
 			move.l	d0,(a0)
-
-			lea		nextFx(pc),a6
-			move.l	m_packedSize(a6),d0
-			move.l	m_size(a6),d1
-			addi.l	#DEPACK_IN_PLACE_MARGIN-DISK_SECTOR_ALIGN_MARGIN,d1
-			sub.l	d0,d1						; offset
-			add.l	(a0),d1						; loading AD
 			lea		alignedDmaLoadAd(pc),a0
-			move.l	d1,(a0)
+			move.l	d0,(a0)
 
 			lea		nextFx(pc),a6
 
@@ -804,7 +797,6 @@ depackCachedFile:
 			move.l	d0,m_ad(a6)
 
 			move.l	d0,a1
-	move.w	d0,$100.w
 			move.l	persistentFakeAd(pc),a0
 			bsr		lz4_frame_depack
 
