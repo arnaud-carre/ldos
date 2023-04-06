@@ -116,8 +116,10 @@ LDOS_GET_BLACKBOARD_ADDR			=	19*4
 
 ; input: d0.w File ID
 ;		 d1.l final unpacked buffer size
-LDOS_CACHE_LOAD_FILE				=	20*4
+LDOS_PRELOAD_FROM_LZ4_MEMORY		=	20*4
 
+; DO NOT USE!!
+LDOS_WIPE_PREVIOUS_FX				=	21*4
 
 
 LDOS_MEM_ANY_RAM		=	(1<<30)

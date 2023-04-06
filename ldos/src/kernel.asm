@@ -210,9 +210,6 @@ kernelCrcStart:
 kernelStart:
 		bsr		vectorSet
 
-		lea		cacheVars(pc),a0
-		move.w	#-1,m_cacheFileId(a0)
-
 		bsr		trackloaderInit
 		
 		bsr		systemInstall
@@ -255,7 +252,8 @@ kernelLibrary:
 			bra.w	loadFileCustom
 			bra.w	setNextFileId
 			bra.w	getBlackboardAddr
-			bra.w	cacheFile
+			bra.w	preloadFromLz4Memory
+			bra.w	wipePreviousFx
 			
 			
 			opt o+		; enable
@@ -312,48 +310,36 @@ userLoadNextFile:
 			bsr		loadNextFile
 			rts
 
-; input: d0.w File ID
-;		 d1.l final unpacked buffer size
-cacheFile:
-			lea		cacheVars(pc),a5
-			tst.w	m_cacheFileId(a5)
-			bpl		.cacheError
-			move.l	persistentFakeAd(pc),d2
-			bne		.cacheError
+wipePreviousFx:
+		; Free all memory of previous FX
+			moveq	#MEMLABEL_USER_FX,d0
+			bsr		freeMemLabel
+			rts
 
-			move.l	d1,m_cacheDestSize(a5)
-			move.w	d0,m_cacheFileId(a5)
+; input: a0: lz4 frame data
+;		 d0.l: unpacked data size
+preloadFromLz4Memory:
+			pea		(a0)
+			move.l	d0,-(a7)
 
-			bsr		getFSInfos
-
-			move.l	nextFx+m_size(pc),d0	; depacked size
-			addi.l	#DISK_SECTOR_ALIGN_MARGIN,d0	; unpacked size
-			bsr		persistentFakeAlloc
-
-			lea		nextEXEDepacked(pc),a0
-			move.l	d0,(a0)
-			lea		alignedDmaLoadAd(pc),a0
-			move.l	d0,(a0)
+			lea		nextFx(pc),a0
+			move.l	(a7)+,d0
+			move.l	d0,m_size(a0)
+			move.b	#MEMLABEL_PRECACHED_FX,(SVAR_CURRENT_MEMLABEL).w
+			bsr		allocAnyMem
 
 			lea		nextFx(pc),a6
-
 			ori.w	#1<<kLDOSExeFile,m_flags(a6)	; hack to force type to LDOS exe
+			move.l	d0,m_ad(a6)
+			move.l	d0,a1
+			move.l	(a7)+,a0
 
-			move.l	nextEXEDepacked(pc),m_ad(a6)
-			move.l	alignedDmaLoadAd(pc),a0
-
-			bsr		loadFileRaw
-
-			lea		nextFx(pc),a6
-			clr.l	m_ad(a6)
+			bsr		lz4_frame_depack
 
 			rts
 
-
-.cacheError:	lea		.txt(pc),a0
-				trap	#0
-.txt:			dc.b	'LDOS Cache file error',0
-				even
+			include	"lz4_frame.asm"
+			even
 
 
 runLoadedFile:		
@@ -787,31 +773,10 @@ loadFileCustom:
 			rts
 		
 
-;-----------------------------------------------------------------		
-depackCachedFile:
-			move.b	#MEMLABEL_PRECACHED_FX,(SVAR_CURRENT_MEMLABEL).w
-			move.l	cacheVars+m_cacheDestSize(pc),d0
-			bsr		allocAnyMem
-
-			lea		nextFx(pc),a6
-			move.l	d0,m_ad(a6)
-
-			move.l	d0,a1
-			move.l	persistentFakeAd(pc),a0
-			bsr		lz4_frame_depack
-
-			rts
-
-			include	"lz4_frame.asm"
-			even
-
 
 ;-----------------------------------------------------------------		
 ; d0: screen number ( script.txt order )		
 allocAndLoadFile:
-			lea		cacheVars(pc),a0
-			cmp.w	m_cacheFileId(a0),d0
-			beq		depackCachedFile
 
 			bsr		getFSInfos
 
@@ -1328,13 +1293,6 @@ musicTick:			dc.l	0
 clockTick:			dc.l	0
 
 	rsreset
-
-m_cacheFileId:		rs.w	1
-m_cacheDestSize:	rs.l	1
-m_cacheSizeof:		rs.w	0
-
-cacheVars:			dcb.b	m_cacheSizeof,0
-
 
 copperListData:
 		dc.l	$01fc0000
