@@ -53,6 +53,17 @@ Each demo part should be a standard Amiga executable.
 ## Amiga demos using LDOS
 LDOS is production ready :) Several Amiga demos are already powered by LDOS:
 
+### Cycle-Op by Oxygene. (3rd place at Revision 2023, Amiga compo)
+https://www.pouet.net/prod.php?which=94129
+
+![Cycle-Op](https://content.pouet.net/files/screenshots/00094/00094129.jpg)
+
+### The Nature of Magic by NGC. (6th place at Revision 2023, Amiga compo)
+https://www.pouet.net/prod.php?which=94172
+
+![The Nature of Magic](https://content.pouet.net/files/screenshots/00094/00094172.png)
+
+
 ### The Fall by The Deadliners & Lemon. (1st place at Revision 2018, Amiga compo)
 https://www.pouet.net/prod.php?which=75773
 
