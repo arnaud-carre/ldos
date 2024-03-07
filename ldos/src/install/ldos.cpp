@@ -177,26 +177,71 @@ void	ldosFile::Release()
 	m_type = kUnknownRawBinary;
 }
 
-
-static void	amigaExeGetMemoryLayout(const u32* data, int& outChip, int& outFake)
+static const u32* skipEndOfHunk(const u32* data)
 {
+	u32 id = bswap32(data[0]);
+	if ( 0x3ec == id )
+	{
+		data++;
+		for (;;)
+		{
+			u32 count = bswap32(*data++);
+			if (0 == count)
+				break;
+			data++;			// skip hunk number
+			data += count;	// skip all offsets
+		}
+	}
+	return data;
+}
 
-	outChip = 0;
-	outFake = 0;
+void	ldosFile::amigaExeGetMemoryLayout(const u32* data)
+{
 	assert(bswap32(data[0]) == 0x3f3);
 	if (0 == bswap32(data[1]))
 	{
+		int memBank[64];
 		int hunkCount = bswap32(data[2]);
-		data += 5;		// skip first and last hunk
+		assert(hunkCount <= 64);
+		data += 5;			// skip first and last hunk
+
+		for (int i=0;i<hunkCount;i++)
+		{
+			u32 size = bswap32(*data++);
+			memBank[i] = (size&(1 << 30)) ? 0 : 1;		// chip or fake hunk
+		}
+
 		for (int i = 0; i < hunkCount; i++)
 		{
-			u32 v = bswap32(data[0]);
-			int size = (v & 0x00ffffff) << 2;		// size in bytes
-			if (v & (1 << 30))
-				outChip += size;
-			else
-				outFake += size;
-			data++;
+			u32 chunkId = (bswap32(*data++)) & 0x3fffffff;
+			u32 size = bswap32(*data++);
+			sectionSize& ssize = m_sectionSizes[memBank[i]];
+			switch (chunkId)
+			{
+				case 0x3e9:
+					ssize.m_code += size<<2;
+					data += size;				// skip data
+					data = skipEndOfHunk(data);
+					break;
+				case 0x3ea:
+					ssize.m_data += size<<2;
+					data += size;				// skip data
+					data = skipEndOfHunk(data);
+					break;
+				case 0x3eb:
+					ssize.m_bss += size<<2;
+					break;
+				default:
+					printf("ERROR: Unknown Amiga exe chunk id $%08x\n", chunkId);
+					exit(0);
+					break;
+			}
+			u32 idEnd = bswap32(*data++);
+			if (0x3f2 != idEnd)
+			{
+				printf("ERROR: bad amiga EXE reloc parsing\n");
+				exit(0);
+			}
 		}
 	}
 }
@@ -205,19 +250,20 @@ static void	amigaExeGetMemoryLayout(const u32* data, int& outChip, int& outFake)
 ldosFileType	ldosFile::DetermineFileType(const char* sFilename)
 {
 	ldosFileType ret = kUnknownRawBinary;
+	memset(m_sectionSizes, 0, sizeof(m_sectionSizes));
 	if ((m_data) && (m_originalSize >= 4))
 	{
 		const u32* r = (const u32*)m_data;
 		if (0x3f3 == bswap32(r[0]))
 		{
-			amigaExeGetMemoryLayout(r, m_chipSize, m_fakeSize);
+			amigaExeGetMemoryLayout(r);
 			ret = kAmigaExeFile;
 
 		}
 		else if ('LSP1' == bswap32(r[0]))
 		{
 			ret = kLSPMusicScore;
-			m_fakeSize = m_originalSize;
+			m_sectionSizes[1].m_data = m_originalSize;
 		}
 		else
 		{
@@ -226,7 +272,12 @@ ldosFileType	ldosFile::DetermineFileType(const char* sFilename)
 			if (0 == _stricmp(fExt, ".lsbank"))
 			{
 				ret = kLSPMusicBank;
-				m_chipSize = m_originalSize;
+				m_sectionSizes[0].m_data = m_originalSize;
+			}
+			else
+			{
+				// by default any RAW file go to Any, data section
+				m_sectionSizes[1].m_data = m_originalSize;
 			}
 		}
 	}
@@ -293,7 +344,7 @@ bool	ldosFile::LoadKernel(const ldosFatEntry* fat, int count)
 		memcpy(m_data + kernelSize, fat, count * sizeof(ldosFatEntry));
 		ret = ArjPack(4);		// LDOS kernel is packed using arj m4
 		m_sName = _strdup("kernel.bin");
-		m_fakeSize = m_originalSize;
+		m_sectionSizes[1].m_code = m_originalSize;
 	}
 	return ret;
 }
@@ -418,6 +469,11 @@ void	ldosFatCreate(const ldosFile* files, int count, ldosFatEntry* out)
 	}
 }
 
+static int b2k(int v)
+{
+	return ((v + 1023) >> 10);
+}
+
 void	ldosFile::DisplayInfo(u32 diskOffset) const
 {
 	// display infos
@@ -428,7 +484,10 @@ void	ldosFile::DisplayInfo(u32 diskOffset) const
 		"LSM",
 		"LSB",
 	};
-	printf("[%d]:$%06x [%s] Packing %6d->%6d (%3d%%) Chip:%3dKiB Fake:%3dKiB  (%s)\n", m_diskId, diskOffset, sTypes[int(m_type)], m_originalSize, m_packedSize, m_packingRatio, (m_chipSize + 1023) >> 10, (m_fakeSize + 1023) >> 10, m_sName);
+	printf("[%d]:$%06x [%s] Packing %6d->%6d (%3d%%) (Code,Data,Bss in KiB) Chip: (%3d,%3d,%3d) Any:(%3d,%3d,%3d) (%s)\n", m_diskId, diskOffset, sTypes[int(m_type)], m_originalSize, m_packedSize, m_packingRatio,
+	       b2k(m_sectionSizes[0].m_code),b2k(m_sectionSizes[0].m_data),b2k(m_sectionSizes[0].m_bss),
+	       b2k(m_sectionSizes[1].m_code),b2k(m_sectionSizes[1].m_data),b2k(m_sectionSizes[1].m_bss),
+	       m_sName);
 }
 
 u32	ldosFile::OutToDisk(u8* adfBuffer, u32 diskOffset) const

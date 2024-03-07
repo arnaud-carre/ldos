@@ -34,14 +34,13 @@ struct ldosFatEntry
 
 struct  ldosFile
 {
-	ldosFile::ldosFile()
+	ldosFile()
 	{
 		m_data = NULL;
 		m_packedData = NULL;
 		m_sName = NULL;
 		m_type = kUnknownRawBinary;
-		m_chipSize = 0;
-		m_fakeSize = 0;
+		memset(m_sectionSizes, 0, sizeof(m_sectionSizes));
 	}
 
 	bool	LoadUserFile(const char* sFilename, int diskId, bool packing);
@@ -51,6 +50,7 @@ struct  ldosFile
 	u32		OutToDisk(u8* adfBuffer, u32 diskOffset) const;
 	u8*		ArjDataExtract(const u8* arj, int method, u32& outSize);
 
+	void amigaExeGetMemoryLayout(const u32* data);
 	ldosFileType	DetermineFileType(const char* sFilename);
 	void			Release();
 	bool			ArjPack(int method);
@@ -63,7 +63,14 @@ struct  ldosFile
 	u32		m_packedSize;
 	int		m_packingRatio;
 	int		m_packingMethod;
-	int		m_chipSize;
-	int		m_fakeSize;
+	
+	struct sectionSize
+	{
+		int m_code;
+		int m_data;
+		int m_bss;
+	};
+
+	sectionSize m_sectionSizes[2];		// chip & fake
 	ldosFileType	m_type;
 };
