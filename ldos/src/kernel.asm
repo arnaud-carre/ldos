@@ -702,6 +702,7 @@ loadBinaryBlob:
 			lea		nextFx(pc),a6
 			move.l	m_ad(a6),a0
 			move.l	m_size(a6),d0
+			clr.l	m_ad(a6)			; this is not a standard exe pre_loaded file
 
 			rts
 
