@@ -253,6 +253,7 @@ kernelLibrary:
 			bra.w	setNextFileId
 			bra.w	getBlackboardAddr
 			bra.w	preloadFromLz4Memory
+			bra.w	freeAnyBinaryBlob
 			bra.w	wipePreviousFx
 			
 			
@@ -705,6 +706,12 @@ loadBinaryBlob:
 			clr.l	m_ad(a6)			; this is not a standard exe pre_loaded file
 
 			rts
+
+freeAnyBinaryBlob:
+			move.b	#MEMLABEL_PRECACHED_FX,d0
+			bsr		freeMemLabel
+			rts
+
 
 ;-----------------------------------------------------------------		
 ; input:

@@ -118,8 +118,12 @@ LDOS_GET_BLACKBOARD_ADDR			=	19*4
 ;		 d1.l final unpacked buffer size
 LDOS_PRELOAD_FROM_LZ4_MEMORY		=	20*4
 
-; DO NOT USE!!
-LDOS_WIPE_PREVIOUS_FX				=	21*4
+; release memory of ALL previously LDOS_LOAD_BINARY_BLOB commands
+LDOS_FREE_ALL_BINARY_BLOB			=	21*4
+
+
+; DO NOT USE!! LDOS internal
+LDOS_WIPE_PREVIOUS_FX				=	22*4
 
 
 LDOS_MEM_ANY_RAM		=	(1<<30)
