@@ -152,7 +152,7 @@ blitterInit:
 
 
 InitSprites
-		lea	SpriteMotif,a0
+		move.l	pSpriteGfx(pc),a0
 		lea	pSprite,a1
 		lea	pMasque,a2
 		moveq	#31,d5
