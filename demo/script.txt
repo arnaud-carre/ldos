@@ -1,5 +1,7 @@
-parcade.lsmusic
-parcade.lsbank
+ignition_large.lsmusic
+ignition_large.lsbank
 sprites_loader/sprite.bin
 greetings/greetings.bin
 sprites_loader/m_sprite.spr
+orbit.lsmusic
+orbit.lsbank

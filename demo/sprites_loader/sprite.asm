@@ -1,4 +1,4 @@
-       
+
 ;
 ; very old and slow sprite anim to demonstrate LDOS loading & depacking
 ;
@@ -31,7 +31,7 @@ Dp4			=		40*2
 
 
 			bsr		blitterWait
-			
+
 		; load some blob data
 			move.l	(LDOS_BASE).w,a6
 			moveq	#4,d0					; m_sprite.spr
@@ -43,10 +43,10 @@ Dp4			=		40*2
             bsr     WaveCompute
             bsr     blitterInit
             bsr     setPalette
-          
+
 
         ; install interrupt handler to animate sprites
-			bsr		pollVSync		
+			bsr		pollVSync
 			move.w	#(1<<5),$dff09a			; disable VBL
 			move.w	#(1<<5),$dff09c
 			lea		copperDummy,a0
@@ -58,23 +58,56 @@ Dp4			=		40*2
 			move.l	(LDOS_BASE).w,a6
 			jsr		LDOS_MUSIC_START(a6)
 
-			
+			move.w	#$0f0,$dff180
+			move.w	#100-1,d0
+pause0:		bsr		pollVSync
+			dbf		d0,pause0
 
 			move.l	(LDOS_BASE).w,a6
-			moveq	#3,d0
-			jsr		LDOS_SET_NEXT_FX_ID(a6)
+			jsr		LDOS_MUSIC_STOP(a6)
+
+			move.w	#$f00,$dff180
+			move.w	#100-1,d0
+pause1:		bsr		pollVSync
+			dbf		d0,pause1
+
+			;load bank first incase it's very tight on space
+			move.l	(LDOS_BASE).w,a6
+			move.w	#6,d0
+			jsr		LDOS_LOAD_BINARY_BLOB(a6)
+
+			move.w	#$00f,$dff180
+			move.w	#100-1,d0
+pause2:		bsr		pollVSync
+			dbf		d0,pause2
+
+			;load music
+			move.l	(LDOS_BASE).w,a6
+			move.w	#5,d0
+			jsr		LDOS_LOAD_BINARY_BLOB(a6)
+
+			move.w	#$0ff,$dff180
+			move.w	#100-1,d0
+pause3:		bsr		pollVSync
+			dbf		d0,pause3
+
+			move.w	#$000,$dff180
+
+;			move.l	(LDOS_BASE).w,a6
+;			moveq	#3,d0
+;			jsr		LDOS_SET_NEXT_FX_ID(a6)
 
 
         ; music is loaded, we now load & depack the next part ( simple scroll text to demonstrate )
-			move.l	(LDOS_BASE).w,a6
-			jsr		LDOS_PRELOAD_NEXT_FX(a6)        
+;			move.l	(LDOS_BASE).w,a6
+;			jsr		LDOS_PRELOAD_NEXT_FX(a6)
 
         ; we now can terminate this part by RTS. Next part will execute a start music command
-       
+
             rts         ; end of this part
-            
-            
-			
+
+
+
 InterruptLevel3:
 			btst	#4,$dff01f
 			beq.s	.intError
@@ -106,10 +139,10 @@ InterruptLevel3:
             bsr     spriteClear
 
             bsr     spriteRender
-           
+
 
             addq.w  #1,frame
-			
+
 			movem.l	(a7)+,d0-a6
 
 		IFNE	PROFILING
@@ -120,9 +153,9 @@ InterruptLevel3:
 			move.w	#1<<4,$dff09c		;clear VBL interrupt bit
 			nop
 			rte
-			
+
 .intError:	illegal
-			
+
 pollVSync:	btst	#0,$dff005
 			beq.s	pollVSync
 .wdown:		btst	#0,$dff005
@@ -241,7 +274,7 @@ WaveCompute		lea	    WaveForm,a5
 				subq.w	#1,(a7)
 				bne		.Loop1
                 addq.w  #2,a7
-                
+
 
 Repasse:	    lea     WaveForm,a0
                 move.l	#SPRITE_COUNT*FRAME_COUNT,d7
@@ -289,7 +322,7 @@ spriteClear:
 
 		move.l	SCR1(pc),a2
 		lea	(SCREENH/2)*LINE_PITCH*PLANCOUNT(a2),a2	; milieu de l'ecran
-		
+
 			lea		$dff000,a6
 			move.w	#$0100,$40(a6)
 			move.w	#((31*3)<<6)+3,d2		; pour les masques
@@ -302,12 +335,12 @@ spriteClear:
 			move.l	a1,$54(a6)
 			move.w	d2,$58(a6)
 			dbf		d7,.clear
-			
-		
+
+
 		rts
 
 spriteRender:
-		
+
 	; display sprites
 
 		move.w	frame(pc),d0
@@ -315,7 +348,7 @@ spriteRender:
 		mulu.w	#SPRITE_COUNT*4,d0
 		lea	    WaveForm,a5
 		add.l	d0,a5
-		
+
 		lea	$dff000,a6
 		move.l	SCR1(pc),a0
 		lea	(SCREENH/2)*LINE_PITCH*PLANCOUNT(a0),a0	; milieu de l'ecran
@@ -344,30 +377,30 @@ spriteRender:
 		dbf	    d7,.sLoop
 
         rts
-			
+
 SCR1:           dc.l    screenBuffer1
 SCR2:           dc.l    screenBuffer2
 frame:          dc.w    0
 pSpriteGfx:		dc.l	0
 
-            
-            
+
+
 	data
 
 Cosinus		    incbin	"cosinus.bin"
                 even
 
-	
+
 	data_c
-		
-				; CHIP Memory					
+
+				; CHIP Memory
 copperDummy:	dc.l	$01fc0000
 
 				; screen 320*256
 				dc.l	$008e2881
 				dc.l	$009028c1
 				dc.l	$00920038
-				dc.l	$009400d0				
+				dc.l	$009400d0
 				dc.l	$01020000
 				dc.l	$01040000	; $24: HW sprite priority over playfield
 				dc.l	$01060000
@@ -384,8 +417,8 @@ copScrSet:      dc.l    $00e00000
                 dc.l    $00e60000
                 dc.l    $00e80000
                 dc.l    $00ea0000
-                
-copPal:         dc.l    $01800000
+
+copPal:         dc.l    $01820000
                 dc.l    $01820000
                 dc.l    $01840000
                 dc.l    $01860000
