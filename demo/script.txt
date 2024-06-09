@@ -2,4 +2,3 @@ parcade.lsmusic
 parcade.lsbank
 sprites_loader/sprite.bin
 greetings/greetings.bin
-sprites_loader/m_sprite.spr

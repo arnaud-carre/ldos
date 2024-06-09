@@ -151,7 +151,7 @@ trackLoadStart:
 			move.b	#MEMLABEL_TRACKLOAD,(SVAR_CURRENT_MEMLABEL).w
 			lea		nextEXEAllocs(pc),a0
 			move.l	#MFM_DMA_SIZE,(a0)+
-			move.l	#13320|LDOS_MEM_ANY_RAM,(a0)+
+			move.l	#INFLATE_TMP_BUFFER_SIZE|LDOS_MEM_ANY_RAM,(a0)+
 			lea		nextEXEAllocs(pc),a0
 			bsr		batchAllocator
 			move.l	(a7)+,a0
@@ -192,9 +192,6 @@ trackLoadStart:
 		
 			lea		floppyInt(pc),a0
 			move.l	a0,$64.w
-			
-			lea		MFMDecoderTickIfAny(pc),a0
-			move.l	a0,$84.w						; trap #1
 			
 			lea	$dff000,a3
 			lea	$bfe001,a4
@@ -269,7 +266,17 @@ floppyInt:
 			btst	#1,$dff01f
 			beq.s	unknownInterrupt
 
-			movem.l	d0/a0/a1/a6,-(a7)
+			pea		(a6)
+			lea		fiberData+15*4+4+2(pc),a6
+			move.l	(a7)+,-(a6)
+			movem.l	d0-a5,-(a6)
+
+			move.w	(a7),-(a6)			; save SR
+			move.l	2(a7),-(a6)			; return PC
+
+			move.w	(a7),d0
+			andi.w	#$2000,d0
+			bne		.super
 
 			; first, set the decode buffer
 			lea		trackloaderVars(pc),a6
@@ -278,19 +285,22 @@ floppyInt:
 			move.w	trkSectorsInTrack(a6),m_sectorCount(a6)
 			move.w	#-1,trkDmaFlag(a6)			; marker decoder buffer as ready for async decoder
 
-			lea		MFMDecoderPatch(pc),a0
-			move.w	#$4e41,(a0)					; patch with trap #1
-
 			move.w	$dff006,d0
 			lsl.w	#8,d0
 			add.b	$bfd800,d0
 			add.w	d0,trkEntropyValue(a6)
 
-			movem.l	(a7)+,d0/a0/a1/a6
+			lea		fiberDecoder(pc),a0
+			move.l	a0,2(a7)
+
 			move.w	#(1<<1),$dff09c				; clear disk req
 			move.w	#(1<<1),$dff09c				; clear disk req
 			nop
 			rte
+
+.super:		move.l	#$12345678,d7
+			illegal
+
 
 trackLoaderTick:
 
@@ -396,18 +406,16 @@ waitDiskReady:	btst 	#1,$dff01f
 				beq.s 	waitDiskReady
 				rts
 
-MFMDecoderTickIfAny:
-			pea		(a1)
-			lea		trackloaderVars(pc),a1
-			tst.w	trkDmaFlag(a1)
-			beq.s	.nothing
-			bsr.s	MFMDecodeTrackCallback
 
-.nothing:	lea		MFMDecoderPatch(pc),a1
-			move.w	#$4e71,(a1)
-			move.l	(a7)+,a1
-			rte
+fiberDecoder:
+				bsr		MFMDecodeTrackCallback
 
+				lea		fiberData(pc),a6
+				move.l	(a6)+,-(a7)
+				move.w	(a6)+,d0
+				move	d0,ccr
+				movem.l	(a6),d0-a6
+				rts
 
 MFMDecodeTrackCallback:
 
@@ -585,10 +593,10 @@ MFMSectorDecode:
 			movem.l	d1-d4/a0-a2,-(a7)
 			move.l	#$55555555,d2			; clear les bits de check.
 			movem.l	(a0)+,d0/d3
-			and.l	d2,d0
+;			and.l	d2,d0
 			and.l	d2,d3
-			add.l	d0,d0
-			or.l	d0,d3			; Data checksum.
+;			add.l	d0,d0
+;			or.l	d0,d3			; Data checksum.
 			moveq	#512/4-1,d4
 			lea		512(a0),a2
 
