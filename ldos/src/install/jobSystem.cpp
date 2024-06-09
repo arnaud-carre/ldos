@@ -11,7 +11,7 @@ uint32_t JobSystem::threadMain(void* data)
 	return js->Start();
 }
 
-int	JobSystem::RunJobs(void* items, int itemSizeof, int itemCount, bool(*processingFunction)(void* item), int workersCount)
+int	JobSystem::RunJobs(void* items, int itemCount, bool(*processingFunction)(void* base, int index), int workersCount)
 {
 	if (0 == itemCount)
 		return 0;
@@ -35,9 +35,8 @@ int	JobSystem::RunJobs(void* items, int itemSizeof, int itemCount, bool(*process
 	printf("Packing (deflate) %d files using %d threads...\n", itemCount, workersCount);
 	clock_t t0 = clock();
 
-	m_items = (uint8_t*)items;
+	m_base = (uint8_t*)items;
 	m_itemCount = itemCount;
-	m_itemSizeof = itemSizeof;
 	m_itemIndex = 0;
 	m_itemSucceedCount = 0;
 	m_processingFunction = processingFunction;
@@ -65,11 +64,11 @@ uint32_t JobSystem::Start()
 {
 	for (;;)
 	{
-		int32_t id = m_itemIndex.fetch_add(1); //InterlockedIncrement((volatile LONG *)&m_itemIndex) - 1;
+		int id = m_itemIndex.fetch_add(1); //InterlockedIncrement((volatile LONG *)&m_itemIndex) - 1;
 		if (id >= m_itemCount)
 			break;
 
-		if (m_processingFunction((void*)(m_items + id * m_itemSizeof)))
+		if (m_processingFunction(m_base,id))
 			m_itemSucceedCount.fetch_add(1);
 	}
 	return 0;

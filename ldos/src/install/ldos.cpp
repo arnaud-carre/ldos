@@ -193,10 +193,10 @@ static	bool	AdfExport(char* argv[], const ldosFile* files, int count, const ldos
 }
 
 
-static bool jobCompress(void* item)
+static bool jobCompress(void* base, int index)
 {
-	ldosFile* lf = (ldosFile*)item;
-	return lf->Compress();
+	ldosFile* lf = (ldosFile*)base;
+	return lf[index].Compress();
 }
 
 
@@ -243,7 +243,7 @@ int	main(int _argc, char *_argv[])
 	{
 		// pack all user files using multi-threading
 		JobSystem js;
-		int nSuccess = js.RunJobs(gFileList, sizeof(ldosFile), count, jobCompress);
+		int nSuccess = js.RunJobs(gFileList, count, jobCompress);
 		if (nSuccess == count)
 		{
 
