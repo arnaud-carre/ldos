@@ -706,12 +706,13 @@ getEntropy:
 ; a0: loading address
 ; d0: size
 loadBinaryBlob:
-			move.w	d0,-(a7)
 
-			move.b	#MEMLABEL_PRECACHED_FX,d0
-			bsr		freeMemLabel
-
-			move.w	(a7)+,d0
+		; NOTE: Do *not* free precache anymore, to allow doing several loadBinaryBlob in a row
+;			move.w	d0,-(a7)
+;			move.b	#MEMLABEL_PRECACHED_FX,d0
+;			bsr		freeMemLabel
+;			move.w	(a7)+,d0
+			
 			bsr		allocAndLoadFile
 		
 			lea		nextFx(pc),a6
