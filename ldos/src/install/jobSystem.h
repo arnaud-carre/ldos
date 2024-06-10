@@ -1,21 +1,21 @@
 #pragma once
-#include <stdint.h>
 #include <atomic>
+
 
 class JobSystem
 {
 public:
+	typedef bool (*processingFunction)(void* firstItem, int index);
 	int		RunJobs(void* items,
 					int itemCount,
-					bool(*processingFunction)(void* base, int index),
+					processingFunction func,
 					int workersCount = 0);
 
 private:
-	static uint32_t threadMain(void* pUser);
-	uint32_t		Start();
-	uint8_t* m_base;
+	void	Start();
+	void* m_items;
 	int m_itemCount;
 	std::atomic<int> m_itemIndex;
 	std::atomic<int> m_itemSucceedCount;
-	bool(*m_processingFunction)(void* base, int index);
+	processingFunction m_processingFunction;
 };

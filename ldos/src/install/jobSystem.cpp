@@ -5,26 +5,21 @@
 
 static const int	kMaxWorkers = 64;
 
-uint32_t JobSystem::threadMain(void* data)
-{
-	JobSystem* js = (JobSystem*)data;
-	return js->Start();
-}
-
-int	JobSystem::RunJobs(void* items, int itemCount, bool(*processingFunction)(void* base, int index), int workersCount)
+int	JobSystem::RunJobs(void* items, int itemCount, processingFunction func, int workersCount)
 {
 	if (0 == itemCount)
 		return 0;
 
 	if (0 == workersCount)
+	{
 		workersCount = std::thread::hardware_concurrency();
+		if ( 0 == workersCount )
+			workersCount = 1;
+	}
 
 	if (workersCount > itemCount)
 		workersCount = itemCount;
-
-	if (workersCount <= 0)
-		workersCount = 1;
-	else if (workersCount > kMaxWorkers)
+	if (workersCount > kMaxWorkers)
 		workersCount = kMaxWorkers;
 
 	extern bool gQuickMode;
@@ -35,15 +30,15 @@ int	JobSystem::RunJobs(void* items, int itemCount, bool(*processingFunction)(voi
 	printf("Packing (deflate) %d files using %d threads...\n", itemCount, workersCount);
 	clock_t t0 = clock();
 
-	m_base = (uint8_t*)items;
+	m_items = items;
 	m_itemCount = itemCount;
 	m_itemIndex = 0;
 	m_itemSucceedCount = 0;
-	m_processingFunction = processingFunction;
+	m_processingFunction = func;
 
 	std::thread* pThreads[kMaxWorkers];
 	for (int t = 0; t < workersCount; t++)
-		pThreads[t] = new std::thread(JobSystem::threadMain, this);
+		pThreads[t] = new std::thread([this] { Start(); });
 
 	// wait for all threads to finish
 	for (int t = 0; t < workersCount; t++)
@@ -60,16 +55,15 @@ int	JobSystem::RunJobs(void* items, int itemCount, bool(*processingFunction)(voi
 }
 
 // Grab jobs as fast as possible
-uint32_t JobSystem::Start()
+void JobSystem::Start()
 {
 	for (;;)
 	{
-		int id = m_itemIndex.fetch_add(1); //InterlockedIncrement((volatile LONG *)&m_itemIndex) - 1;
+		const int id = m_itemIndex.fetch_add(1);
 		if (id >= m_itemCount)
 			break;
 
-		if (m_processingFunction(m_base,id))
+		if (m_processingFunction(m_items, id))
 			m_itemSucceedCount.fetch_add(1);
 	}
-	return 0;
 }
