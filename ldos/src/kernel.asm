@@ -270,6 +270,8 @@ kernelLibrary:
 			bra.w	getBlackboardAddr
 			bra.w	preloadFromLz4Memory
 			bra.w	freeAnyBinaryBlob
+			bra.w	musicGetDmacon
+			bra.w	musicFrameTick
 			bra.w	wipePreviousFx
 			
 			
@@ -470,6 +472,15 @@ installCopperList:
 			move.l	d0,a0
 			rts
 		
+musicGetDmacon:
+			lea		LSPDmaCon(pc),a0
+			rts
+
+musicFrameTick:
+			lea		$dff0a0,a6
+			bsr		LSP_MusicPlayTick
+			rts
+
 musicStop:	lea		bMusicPlay(pc),a0
 			clr.w	(a0)
 			lea		$dff000,a0

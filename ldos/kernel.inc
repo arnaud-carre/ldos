@@ -121,9 +121,18 @@ LDOS_PRELOAD_FROM_LZ4_MEMORY		=	20*4
 ; release memory of ALL previously LDOS_LOAD_BINARY_BLOB commands
 LDOS_FREE_ALL_BINARY_BLOB			=	21*4
 
+; In case you need to shut down the LDOS 50Hz tick CIA timer,
+; you use this to know where the player updates the dmacon value,
+; it's up to you to write this to hardware shortly after the music tick
+; Output: a0: address of internal dmacon value
+LDOS_MUSIC_GET_DMACON				=	22*4
+
+; In case you need to shut down the LDOS 50Hz tick CIA timer,
+; you have to call this each frame if you want music to play
+LDOS_MUSIC_FRAME_TICK				=	23*4
 
 ; DO NOT USE!! LDOS internal
-LDOS_WIPE_PREVIOUS_FX				=	22*4
+LDOS_WIPE_PREVIOUS_FX				=	24*4
 
 
 LDOS_MEM_ANY_RAM		=	(1<<30)
