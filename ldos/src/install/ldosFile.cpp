@@ -245,10 +245,6 @@ bool	ldosFile::Compress()
 	{
 		case ldosPackType::kNone:
 		{
-			// no packing
-			packedSize = m_infos.m_originalSize;
-			m_packedData = (uint8_t*)malloc(packedSize);
-			memcpy(m_packedData, m_data, packedSize);
 		}
 		break;
 
@@ -266,6 +262,21 @@ bool	ldosFile::Compress()
 		default:
 			assert(false);
 			break;
+	}
+
+	// in rare case where data couldn't be compressed
+	if ( m_packedData && (uint32_t(packedSize)>=m_infos.m_originalSize ))
+	{
+		printf("Warning: \"%s\" can't be compressed, keep un-compressed\n", m_infos.m_sName);
+		m_targetPackType = ldosPackType::kNone;
+	}
+
+	if ( ldosPackType::kNone == m_targetPackType )
+	{
+		// no packing
+		packedSize = m_infos.m_originalSize;
+		m_packedData = (uint8_t*)malloc(packedSize);
+		memcpy(m_packedData, m_data, packedSize);
 	}
 
 	if (m_packedData)

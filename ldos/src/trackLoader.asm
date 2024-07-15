@@ -408,7 +408,7 @@ waitDiskReady:	btst 	#1,$dff01f
 
 
 fiberDecoder:
-				bsr		MFMDecodeTrackCallback
+				bsr.s	MFMDecodeTrackCallback
 
 				lea		fiberData(pc),a6
 				move.l	(a6)+,-(a7)

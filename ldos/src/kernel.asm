@@ -834,11 +834,9 @@ loadFileRaw:
 		; stored file (unpacked) wait for disk io ends		
 			movem.l	a0-a1,-(a7)
 .wLoop:		move.w	(trackloaderVars+trkDecodedSecCount)(pc),d0
-			beq.s	.loadOk
-			bsr		MFMDecodeTrackCallback
-			bra.s	.wLoop
+			bne.s	.wLoop
 
-.loadOk:	movem.l	(a7)+,a0-a1
+			movem.l	(a7)+,a0-a1
 			exg		a0,a1
 			move.l	m_size(a6),d0
 			bsr		fastMemMove
