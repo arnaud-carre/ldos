@@ -787,10 +787,20 @@ loadFileCustom:
 			bsr		getFSInfos
 			move.l	(a7)+,a0
 			
-			lea		alignedDmaLoadAd(pc),a1
+			lea		nextEXEDepacked(pc),a1
 			move.l	a0,(a1)
 			lea		nextFx(pc),a6
 			move.l	a0,m_ad(a6)
+
+			move.l	m_packedSize(a6),d0
+			move.l	m_size(a6),d1
+			addi.l	#DEPACK_IN_PLACE_MARGIN+DISK_SECTOR_ALIGN_MARGIN,d1
+			sub.l	d0,d1						; offset
+			add.l	a0,d1						; loading AD
+			lea		alignedDmaLoadAd(pc),a1
+			move.l	d1,(a1)
+
+			move.l	alignedDmaLoadAd(pc),a0
 
 			bsr		loadFileRaw
 			lea		nextFx(pc),a6
