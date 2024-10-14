@@ -14,6 +14,8 @@
 
 */
 
+#define D_FANCY_PROGRESS 1
+
 static	const	int	kMaxLdosFiles = 128;
 static	ldosFile		gFileList[kMaxLdosFiles];
 static	ldosFatEntry	gFat[kMaxLdosFiles];
@@ -243,7 +245,49 @@ int	main(int _argc, char *_argv[])
 	{
 		// pack all user files using multi-threading
 		JobSystem js;
-		int nSuccess = js.RunJobs(gFileList, count, jobCompress);
+		int nWorkers = js.RunJobs(gFileList, count, jobCompress);
+
+		if (gQuickMode)
+			printf("(compression ratio warning: quick mode active)\n");
+		else
+			printf("(you can use -quick for faster compression during dev)\n");
+		printf("Packing (deflate) %d files using %d threads...\n", count, nWorkers);
+
+#if D_FANCY_PROGRESS
+		using namespace std::chrono_literals;
+		int ii = 0;
+		for (;;)
+		{
+			int doneCount = 0;
+			const char c = "|/-\\"[(ii++)&3];
+			printf("[");
+			for (int i=0;i<count;i++)
+			{
+				if ( 0 == gFileList[i].m_reportState)
+				{
+					printf(" ");
+				}
+				else if (1 == gFileList[i].m_reportState)
+				{
+					printf("%c",c);
+				}
+				else if (2 == gFileList[i].m_reportState)
+				{
+					printf("X");
+					doneCount++;
+				}
+			}
+			printf("]\r");
+			std::this_thread::sleep_for(100ms);
+			if (doneCount == count)
+			{
+				printf("\n");
+				break;
+			}
+		}
+#endif
+
+		const int nSuccess = js.Complete();
 		if (nSuccess == count)
 		{
 

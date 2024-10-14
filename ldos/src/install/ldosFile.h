@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <atomic>
 
 enum ldosFileType
 {
@@ -57,6 +58,7 @@ public:
 		m_data = nullptr;
 		m_packedData = nullptr;
 		m_targetPackType = kUnknown;
+		m_reportState = 0;
 	};
 
 	bool		LoadUserFile(const char* sFilename, bool packing);
@@ -66,6 +68,7 @@ public:
 	const Info&	GetInfo() const { return m_infos; };
 	void DisplayInfo(uint32_t diskOffset) const;
 	bool			Compress();
+	std::atomic<int> m_reportState;
 
 private:
 	void	DetermineFileType(const char* sFilename);

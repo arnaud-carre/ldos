@@ -239,6 +239,8 @@ bool	ldosFile::Compress()
 {
 	bool ret = false;
 
+	m_reportState = 1;
+
 	int packedSize = 0;
 	int safeDist = 0;
 	switch ( m_targetPackType )
@@ -298,6 +300,7 @@ bool	ldosFile::Compress()
 	if (ret)
 		m_infos.m_packType = m_targetPackType;
 
+	m_reportState = 2;
 	return ret;
 }
 
