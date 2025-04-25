@@ -58,6 +58,11 @@ https://www.pouet.net/prod.php?which=104001
 
 ![Enchanted Glitch](https://content.pouet.net/files/screenshots/00104/00104001.png)
 
+### Backslide to Arcanum by Cosmic Orbs.
+https://www.pouet.net/prod.php?which=96604
+
+![Backslide to Arcanum](https://content.pouet.net/files/screenshots/00096/00096604.png)
+
 ### Cycle-Op by Oxygene.
 https://www.pouet.net/prod.php?which=94129
 
