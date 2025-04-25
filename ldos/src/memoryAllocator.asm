@@ -185,9 +185,17 @@ allocMemoryExt:
 
 ; input: d0: size in bytes
 allocPersistentChip:
-
 			movem.l	d1-a6,-(a7)
 			lea		chipMemTable(pc),a0
+			moveq	#MEMLABEL_PERSISTENT_CHIP,d5
+			bra		allocPersistentRAM
+
+allocPersistentFake:
+			movem.l	d1-a6,-(a7)
+			lea		fastMemTable(pc),a0
+			moveq	#MEMLABEL_PERSISTENT_FAKE,d5
+
+allocPersistentRAM:
 			addi.l	#MEMPAGE_SIZE-1,d0
 			moveq	#MEMPAGE_SIZE_BIT,d2
 			lsr.l	d2,d0				; consecutive page count
@@ -196,7 +204,7 @@ allocPersistentChip:
 			lea		MEMPAGE_COUNT(a0),a1	; end of memory map (persistent is allocated from top)
 .search:	tst.b	-(a1)
 			bne.s	.memError
-			move.b	#MEMLABEL_PERSISTENT_CHIP,(a1)
+			move.b	d5,(a1)
 			subq.w	#1,d0
 			beq.s	.found
 			cmpa.l	a0,a1
@@ -219,6 +227,14 @@ trashPersistentChip:
 		movem.l	d0/a0,-(a7)
 		moveq	#MEMLABEL_PERSISTENT_CHIP,d0
 		lea		chipMemTable(pc),a0
+		bsr.s	freeMemLabelExt
+		movem.l	(a7)+,d0/a0
+		rts
+
+trashPersistentFake:
+		movem.l	d0/a0,-(a7)
+		moveq	#MEMLABEL_PERSISTENT_FAKE,d0
+		lea		fastMemTable(pc),a0
 		bsr.s	freeMemLabelExt
 		movem.l	(a7)+,d0/a0
 		rts

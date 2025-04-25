@@ -13,6 +13,7 @@ LDOS_VERSION				=	130
 
 LDOS_BASE					=	$4
 LDOS_MUSIC_PLAYER_ENABLED	=	1
+LDOS_BLACKBOARD_SIZE		=	128		; 128 bytes
 
 
 ; Pre-load & depack the next FX. Once the current FX end (using RTS) the next one
@@ -82,6 +83,47 @@ LDOS_GET_CLOCK_TICK					=	12*4
 ; out: d0.w 16bits
 LDOS_MUSIC_GET_SEQ_POS				=	13*4
 
+; Alloc persistent FAKE memory block between two FX
+; in : d0.l: size of block
+; out: d0.l: Addr of the block
+LDOS_PERSISTENT_FAKE_ALLOC			=	14*4
+
+; Retreive any previously persistent FAKE memory block between two FX
+; in : none
+; out: d0.l: Addr of block ( or NULL if no persistent block)
+;	   d1.l: Size of block ( in bytes )
+LDOS_PERSISTENT_FAKE_GET			=	15*4
+
+; Free any previously persistent FAKE memory block
+; in : none
+; out: none
+LDOS_PERSISTENT_FAKE_TRASH			=	16*4
+
+; Custom RAW (unpacked) file load
+; in : d0: file id
+;    : a0: buffer to load (WARNING: it's up to you to alloc enough space)
+LDOS_LOAD_FILE_CUSTOM				=	17*4
+
+; Force the next FX id. Could be nice if you want to load a previous FX
+; Input d0.w : fx file id
+LDOS_SET_NEXT_FX_ID					=	18*4
+
+; Small memory area to share input/output data between FXs
+; This small shared buffer is garantee to be cleared at boot time
+; Input: none
+; Output: a0: blackboard buffer ( LDOS_BLACKBOARD_SIZE bytes )
+LDOS_GET_BLACKBOARD_ADDR			=	19*4
+
+; input: d0.w File ID
+;		 d1.l final unpacked buffer size
+LDOS_PRELOAD_FROM_LZ4_MEMORY		=	20*4
+
+; release memory of ALL previously LDOS_LOAD_BINARY_BLOB commands
+LDOS_FREE_ALL_BINARY_BLOB			=	21*4
+
+
+; DO NOT USE!! LDOS internal
+LDOS_WIPE_PREVIOUS_FX				=	22*4
 
 
 LDOS_MEM_ANY_RAM		=	(1<<30)

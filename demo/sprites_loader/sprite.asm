@@ -31,6 +31,13 @@ Dp4			=		40*2
 
 
 			bsr		blitterWait
+			
+		; load some blob data
+;			move.l	(LDOS_BASE).w,a6
+;			moveq	#4,d0					; m_sprite.spr
+;			jsr		LDOS_LOAD_BINARY_BLOB(a6)
+;			move.l	a0,pSpriteGfx
+
 
             bsr     InitSprites
             bsr     WaveCompute
@@ -51,11 +58,14 @@ Dp4			=		40*2
 			move.l	(LDOS_BASE).w,a6
 			jsr		LDOS_MUSIC_START(a6)
 
+			move.l	(LDOS_BASE).w,a6
+			moveq	#3,d0
+			jsr		LDOS_SET_NEXT_FX_ID(a6)
+
         ; music is loaded, we now load & depack the next part ( simple scroll text to demonstrate )
 			move.l	(LDOS_BASE).w,a6
-			jsr		LDOS_PRELOAD_NEXT_FX(a6)
-        
-        
+			jsr		LDOS_PRELOAD_NEXT_FX(a6)        
+
         ; we now can terminate this part by RTS. Next part will execute a start music command
        
             rts         ; end of this part
@@ -139,7 +149,7 @@ blitterInit:
 
 
 InitSprites
-		lea	SpriteMotif,a0
+		move.l	pSpriteGfx(pc),a0
 		lea	pSprite,a1
 		lea	pMasque,a2
 		moveq	#31,d5
@@ -335,12 +345,15 @@ spriteRender:
 SCR1:           dc.l    screenBuffer1
 SCR2:           dc.l    screenBuffer2
 frame:          dc.w    0
+pSpriteGfx:		dc.l	sprfile
+
             
             
 	data
 
-SpriteMotif:	incbin	"m_sprite.spr"
-                even
+sprfile:		incbin	"m_sprite.spr"
+				even
+
 Cosinus		    incbin	"cosinus.bin"
                 even
 

@@ -1,0 +1,162 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\external">
+      <UniqueIdentifier>{f6ff5729-dbf9-4f9e-9515-9c16e629f7d7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\external\salvador">
+      <UniqueIdentifier>{36dd2289-d826-447a-a073-8fe48f50aa14}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\external\zopfli">
+      <UniqueIdentifier>{15393bf4-b866-4415-9a88-78258266569e}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="external\zopfli\zopfli.h">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClInclude>
+    <ClInclude Include="external\zopfli\zlib_container.h">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClInclude>
+    <ClInclude Include="external\zopfli\util.h">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClInclude>
+    <ClInclude Include="external\zopfli\tree.h">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClInclude>
+    <ClInclude Include="external\zopfli\symbols.h">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClInclude>
+    <ClInclude Include="external\zopfli\squeeze.h">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClInclude>
+    <ClInclude Include="external\zopfli\lz77.h">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClInclude>
+    <ClInclude Include="external\zopfli\katajainen.h">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClInclude>
+    <ClInclude Include="external\zopfli\hash.h">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClInclude>
+    <ClInclude Include="external\zopfli\gzip_container.h">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClInclude>
+    <ClInclude Include="external\zopfli\deflate.h">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClInclude>
+    <ClInclude Include="external\zopfli\cache.h">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClInclude>
+    <ClInclude Include="external\zopfli\blocksplitter.h">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClInclude>
+    <ClInclude Include="external\salvador\format.h">
+      <Filter>Source Files\external\salvador</Filter>
+    </ClInclude>
+    <ClInclude Include="external\salvador\libsalvador.h">
+      <Filter>Source Files\external\salvador</Filter>
+    </ClInclude>
+    <ClInclude Include="external\salvador\matchfinder.h">
+      <Filter>Source Files\external\salvador</Filter>
+    </ClInclude>
+    <ClInclude Include="external\salvador\shrink.h">
+      <Filter>Source Files\external\salvador</Filter>
+    </ClInclude>
+    <ClInclude Include="external\salvador\libdivsufsort\divsufsort.h">
+      <Filter>Source Files\external\salvador</Filter>
+    </ClInclude>
+    <ClInclude Include="external\salvador\libdivsufsort\divsufsort_config.h">
+      <Filter>Source Files\external\salvador</Filter>
+    </ClInclude>
+    <ClInclude Include="external\salvador\libdivsufsort\divsufsort_private.h">
+      <Filter>Source Files\external\salvador</Filter>
+    </ClInclude>
+    <ClInclude Include="ldos.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ldosFile.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="jobSystem.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="external\zopfli\zopfli_lib.c">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClCompile>
+    <ClCompile Include="external\zopfli\zlib_container.c">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClCompile>
+    <ClCompile Include="external\zopfli\util.c">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClCompile>
+    <ClCompile Include="external\zopfli\tree.c">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClCompile>
+    <ClCompile Include="external\zopfli\squeeze.c">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClCompile>
+    <ClCompile Include="external\zopfli\lz77.c">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClCompile>
+    <ClCompile Include="external\zopfli\katajainen.c">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClCompile>
+    <ClCompile Include="external\zopfli\hash.c">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClCompile>
+    <ClCompile Include="external\zopfli\gzip_container.c">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClCompile>
+    <ClCompile Include="external\zopfli\deflate.c">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClCompile>
+    <ClCompile Include="external\zopfli\cache.c">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClCompile>
+    <ClCompile Include="external\zopfli\blocksplitter.c">
+      <Filter>Source Files\external\zopfli</Filter>
+    </ClCompile>
+    <ClCompile Include="external\salvador\matchfinder.c">
+      <Filter>Source Files\external\salvador</Filter>
+    </ClCompile>
+    <ClCompile Include="external\salvador\shrink.c">
+      <Filter>Source Files\external\salvador</Filter>
+    </ClCompile>
+    <ClCompile Include="external\salvador\libdivsufsort\divsufsort.c">
+      <Filter>Source Files\external\salvador</Filter>
+    </ClCompile>
+    <ClCompile Include="external\salvador\libdivsufsort\divsufsort_utils.c">
+      <Filter>Source Files\external\salvador</Filter>
+    </ClCompile>
+    <ClCompile Include="external\salvador\libdivsufsort\sssort.c">
+      <Filter>Source Files\external\salvador</Filter>
+    </ClCompile>
+    <ClCompile Include="external\salvador\libdivsufsort\trsort.c">
+      <Filter>Source Files\external\salvador</Filter>
+    </ClCompile>
+    <ClCompile Include="ldos.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ldosFile.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="jobSystem.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
