@@ -1,4 +1,4 @@
-# <div align="center">LDOS v1.31 (Leonard Demo Operating System)</div>
+# <div align="center">LDOS v1.50 (Leonard Demo Operating System)</div>
 
 ## Introduction
 LDOS is a framework to easily build Amiga multi-part demos. You can chain several amiga executable effects. LDOS is managing memory allocation, floppy disk loading, data depacking and image disk creation. LDOS also includes an HDD loader to run your demo from harddisk. LDOS toolchain is running on Windows platform.
@@ -34,11 +34,10 @@ Each demo part should be a standard Amiga executable.
 * LDOS is primary made for A500 demo. If ran on higger amiga, CPU caches are switched off
 * LDOS is using LightSpeedPlayer (LSP), the fastest Amiga MOD player ever
 * Generated demo is 1MiB RAM targeted ( with at least 512KiB of chip memory )
-* Use ARJ mode 7 packer
+* Use ZOPFLI "deflate" packing (best packing ratio ever on Amiga/Atari)
 * LDOS is loading & depacking at the same time. Most of demos are loading, then depacking. LDOS depacks while loading, so basically depacking time is free.
-* LDOS use Light Speed Player (fastest MOD player ever)
 * Just put all the exe of your demo in a script.txt and run ldos/bin/install ( look at demo/build.cmd script )
-* All files are automatically packed using Arj7, you don't have to worry about packing
+* All files are automatically packed, you don't have to worry about packing
 * fun fact: All data on the disk is packed except the small bootblock code
 * LDOS bootblock is 292 bytes only and contains the only unpacked data of the disk. Packed data (including FAT) starts right after these 292 bytes
 * LDOS cluster size is 2 bytes only ( no 512 bytes waste per file :) )
@@ -46,31 +45,45 @@ Each demo part should be a standard Amiga executable.
 ## Credits
 
 * LDOS is written by Arnaud Carré aka Leonard/Oxygene ( [@leonard_coder](https://twitter.com/leonard_coder) )
-* ARJ depackers by Mr Ni! / TOS-crew
-* Light Speed Player by Leonard/Oxygene (https://github.com/arnaud-carre/LSPlayer)
-* previous LDOS v1.02 used P61 music player by Photon/Scoopex
+* Light Speed Player by Leonard/Oxygene ( https://github.com/arnaud-carre/LSPlayer )
+* ZOPFLI "deflate" optimal packer by Google ( https://github.com/google/zopfli )
+* "inflate" 68k depacking code by Keir Fraser
+* ZX0 kernel depacking by Einar Saukas, 68k depacker by Emmanuel Marty
 
 ## Amiga demos using LDOS
 LDOS is production ready :) Several Amiga demos are already powered by LDOS:
 
-### The Fall by The Deadliners & Lemon. (1st place at Revision 2018, Amiga compo)
+### Enchanted Glitch by Cosmic Orbs.
+https://www.pouet.net/prod.php?which=104001
+
+![Enchanted Glitch](https://content.pouet.net/files/screenshots/00104/00104001.png)
+
+### Cycle-Op by Oxygene.
+https://www.pouet.net/prod.php?which=94129
+
+![Cycle-Op](https://content.pouet.net/files/screenshots/00094/00094129.jpg)
+
+### The Nature of Magic by NGC.
+https://www.pouet.net/prod.php?which=94172
+
+![The Nature of Magic](https://content.pouet.net/files/screenshots/00094/00094172.png)
+
+### The Fall by The Deadliners & Lemon.
 https://www.pouet.net/prod.php?which=75773
 
 ![The Fall](https://content.pouet.net/files/screenshots/00075/00075773.png)
 
-### De Profundis by The Deadliners & Lemon. & Oxygene (2nd place at Revision 2019, Amiga compo)
+### De Profundis by The Deadliners & Lemon. & Oxygene
 https://www.pouet.net/prod.php?which=81081
 
 ![De Profundis](https://content.pouet.net/files/screenshots/00081/00081081.jpg)
 
-### AmigAtari by Oxygene (3rd place at Revision 2020, Wild compo)
+### AmigAtari by Oxygene
 https://www.pouet.net/prod.php?which=85276
 
 ![AmigAtari](https://content.pouet.net/files/screenshots/00085/00085276.png)
 
-### Mel O Dee by Resistance (2nd place at Xenium 2021, Wild compo)
+### Mel O Dee by Resistance
 https://www.pouet.net/prod.php?which=89698
 
 ![Mel O Dee](https://content.pouet.net/files/screenshots/00089/00089698.jpg)
-
-
