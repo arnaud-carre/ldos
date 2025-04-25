@@ -58,6 +58,11 @@ https://www.pouet.net/prod.php?which=104001
 
 ![Enchanted Glitch](https://content.pouet.net/files/screenshots/00104/00104001.png)
 
+### Glubble (puzzle game) by Oxygene.
+https://www.pouet.net/prod.php?which=96577
+
+![Glubble](https://content.pouet.net/files/screenshots/00096/00096577.jpg)
+
 ### Backslide to Arcanum by Cosmic Orbs.
 https://www.pouet.net/prod.php?which=96604
 
