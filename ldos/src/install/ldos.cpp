@@ -251,7 +251,7 @@ int	main(int _argc, char *_argv[])
 			printf("(compression ratio warning: quick mode active)\n");
 		else
 			printf("(you can use -quick for faster compression during dev)\n");
-		printf("Packing (deflate) %d files using %d threads...\n", count, nWorkers);
+		printf("Packing (ZOPFLI deflate) %d files using %d threads...\n", count, nWorkers);
 
 #if D_FANCY_PROGRESS
 		using namespace std::chrono_literals;
