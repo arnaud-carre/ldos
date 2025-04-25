@@ -70,13 +70,17 @@ start:
 
 			clr.l	m_hddBuffer2(a7)
 
-		; set the CHIP & ANY buffers addr
-			move.l	#chipBuffer,m_chipStart(a7)
-			move.l	#anyBuffer,m_fakeStart(a7)
+		; set the CHIP & ANY buffers addr, 64KiB aligned
+			move.l	#chipBuffer+65535,d0
+			move.l	#anyBuffer+65535,d1
+			clr.w	d0
+			clr.w	d1
+			move.l	d0,m_chipStart(a7)
+			move.l	d1,m_fakeStart(a7)
 
 		; search the NOP to jump in the code
-			move.l	m_hddBuffer1(a7),a1
-			movea.l	a1,a2
+			move.l	m_hddBuffer1(a7),a0
+			movea.l	a0,a2
 			lea		512(a2),a3
 .search:	cmpi.w	#$4e71,(a2)+
 			beq.s	.found
@@ -84,8 +88,8 @@ start:
 			bne.s	.search
 			bra		exitProg		; ERROR: NOP not found in bootsector, probably means it's not LDOS ADF file
 
-.found:		move.l	m_chipStart(a7),a0
-			add.l	#(512-64)*1024,a0
+.found:		move.l	m_chipStart(a7),a1
+			add.l	#(512-64)*1024,a1
 			jmp		(a2)				; jump in the bootsector code
 
 		
@@ -169,7 +173,7 @@ gemdos7:	move.l	conHandle,d1
 			move.l	dosHandle,a6
 			jsr		_LVOReadFile(a6)
 			rts
-			
+
 conHandle:		dc.l	0
 dosHandle:		dc.l	0
 dosLibName:		dc.b	'dos.library',0
@@ -188,14 +192,14 @@ fileH:			ds.l	1
 pBuffer:		ds.l	1
 buffer			ds.b	8
 
-	bss disk_buffer
+	bss_c chip_ram
 
-diskBuffer:		ds.b	DISK1_SIZE
+chipBuffer:		ds.b	(512+64)*1024
 
 	bss any_ram
 
-anyBuffer:		ds.b	512*1024
+anyBuffer:		ds.b	(512+64)*1024
 
-	bss_c chip_ram
+	bss disk_buffer
 
-chipBuffer:		ds.b	512*1024
+diskBuffer:		ds.b	DISK1_SIZE
