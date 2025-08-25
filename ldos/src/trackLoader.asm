@@ -135,7 +135,8 @@ hddChangeDisk:
 			lea		diskOffset(pc),a0
 			clr.l	(a0)
 
-			move.l	#$000000ff,d0
+			clr.l	d0
+			st	d0
 			rts
 		
 ; Main trackload ASYNC function
