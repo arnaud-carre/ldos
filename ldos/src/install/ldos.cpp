@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include "platform_compat.h"
 #include "ldos.h"
 #include "ldosFile.h"
 #include "jobSystem.h"

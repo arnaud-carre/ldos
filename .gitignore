@@ -353,3 +353,6 @@ demo/sprites_loader/*.bin
 demo/*.adf
 demo/*.lsmusic
 demo/*.lsbank
+
+*.o
+.DS_Store
