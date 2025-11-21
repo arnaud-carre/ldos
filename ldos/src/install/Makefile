@@ -7,9 +7,13 @@ CXXFLAGS := -std=c++17 -O2 -Wall -I. -Iexternal/zopfli -Iexternal/salvador -Iext
 CFLAGS := -std=c99 -O2 -Wall -I. -Iexternal/zopfli -Iexternal/salvador -Iexternal/salvador/libdivsufsort
 LDFLAGS := -pthread -lstdc++
 
+# Detect platform using uname
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+PLATFORM := $(UNAME_S)-$(UNAME_M)
+
 # Output directory
-# TODO: make BINDIR configurable for different platforms
-BINDIR := ../../bin/macos-arm64
+BINDIR := ../../bin/$(PLATFORM)
 TARGET := $(BINDIR)/ldos
 
 # Source files
@@ -42,6 +46,14 @@ OBJECTS := $(OBJECTS:.c=.o)
 
 # Default target
 all: $(TARGET)
+	@echo "Platform: $(PLATFORM)"
+
+# Show detected platform
+platform:
+	@echo "Detected platform: $(PLATFORM)"
+	@echo "  OS (uname -s): $(UNAME_S)"
+	@echo "  Architecture (uname -m): $(UNAME_M)"
+	@echo "  Binary directory: $(BINDIR)"
 
 # Create bin directory if it doesn't exist
 $(BINDIR):
@@ -68,4 +80,4 @@ clean:
 # Install (copy to bin directory - already done by build)
 install: all
 
-.PHONY: all clean install
+.PHONY: all clean install platform
