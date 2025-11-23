@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <thread>
+#include <chrono>
 #include "platform_compat.h"
 #include "ldos.h"
 #include "ldosFile.h"
@@ -225,7 +227,7 @@ static bool FindFile(const char* drive, const char* dir, const char* filename, c
 		parentDir[--len] = '\0';
 
 	// Find the last slash and truncate there
-	for (int i = len - 1; i >= 0; i--)
+	for (size_t i = len - 1; i >= 0; i--)
 	{
 		if (parentDir[i] == '/' || parentDir[i] == '\\')
 		{
@@ -305,7 +307,6 @@ int	main(int _argc, char *_argv[])
 		printf("Packing (ZOPFLI deflate) %d files using %d threads...\n", count, nWorkers);
 
 #if D_FANCY_PROGRESS
-		using namespace std::chrono_literals;
 		int ii = 0;
 		for (;;)
 		{
@@ -329,7 +330,7 @@ int	main(int _argc, char *_argv[])
 				}
 			}
 			printf("]\r");
-			std::this_thread::sleep_for(100ms);
+			std::this_thread::sleep_for(std::chrono::milliseconds(150));
 			if (doneCount == count)
 			{
 				printf("\n");

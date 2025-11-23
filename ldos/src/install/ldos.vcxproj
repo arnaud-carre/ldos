@@ -154,6 +154,7 @@
     <ClInclude Include="jobSystem.h" />
     <ClInclude Include="ldos.h" />
     <ClInclude Include="ldosFile.h" />
+    <ClInclude Include="platform_compat.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="external\salvador\libdivsufsort\divsufsort.c" />

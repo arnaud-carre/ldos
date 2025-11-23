@@ -93,6 +93,9 @@
     <ClInclude Include="jobSystem.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="platform_compat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="external\zopfli\zopfli_lib.c">
