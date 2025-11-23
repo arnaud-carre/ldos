@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
+#include "platform_compat.h"
 #include "ldosFile.h"
 #include "external/zopfli/deflate.h"
 #include "external/salvador/libsalvador.h"

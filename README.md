@@ -15,6 +15,13 @@ The sample demo is made of 3 files (look at demo/script.txt)
 ## Building LDOS
 LDOS comes with pre-assembled binaries. ( ldos/bin ). But if you want to modify & build yourself, just run ldos/src/build.cmd
 
+For building on macOS or Linux:
+
+```bash
+cd ldos/src/install
+make
+```
+
 ## How to use LDOS
 Each of your demo FX should include LDOS header
 ```c
