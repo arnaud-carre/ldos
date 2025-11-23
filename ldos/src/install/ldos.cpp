@@ -248,7 +248,7 @@ static bool FindFile(const char* drive, const char* dir, const char* filename, c
 
 int	main(int _argc, char *_argv[])
 {
-	printf("LDOS Installer v1.50\n");
+	printf("LDOS Installer v1.51\n");
 	printf("Written by Arnaud Carr%c.\n\n", 0x82);
 
 	assert(16 == sizeof(ldosFatEntry));

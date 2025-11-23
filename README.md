@@ -1,4 +1,4 @@
-# <div align="center">LDOS v1.50 (Leonard Demo Operating System)</div>
+# <div align="center">LDOS v1.51 (Leonard Demo Operating System)</div>
 
 ## Introduction
 LDOS is a framework to easily build Amiga multi-part demos. You can chain several amiga executable effects. LDOS is managing memory allocation, floppy disk loading, data depacking and image disk creation. LDOS also includes an HDD loader to run your demo from harddisk. LDOS toolchain is running on Windows platform.

@@ -1,3 +1,6 @@
+LDOS 1.51
+	- Linux support by Gigabates
+
 LDOS 1.50
 	- new kernel, new "zopfli" packer, best packing ratio than ever
 	- some new function such as LDOS_LOAD_CUSTOM
