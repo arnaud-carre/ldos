@@ -9,6 +9,8 @@
 ;
 ;---------------------------------------------------------
 
+kVectorHighAddr	=	$100
+
 kickstartContextSave:
 
 			lea		m_ctxBuffer(pc),a5
@@ -45,7 +47,7 @@ kickstartContextSave:
 
 			lea		m_ctxVectors(a5),a1
 			lea		$4.w,a0
-			moveq	#($f0-$4)/4-1,d0
+			moveq	#(kVectorHighAddr-$4)/4-1,d0
 .copy1:		move.l	(a0)+,(a1)+
 			dbf		d0,.copy1
 
@@ -92,7 +94,7 @@ kickstartContextRestore:
 
 			lea		m_ctxVectors(a5),a0
 			lea		$4.w,a1
-			moveq	#($f0-$4)/4-1,d0
+			moveq	#(kVectorHighAddr-$4)/4-1,d0
 .copy2:		move.l	(a0)+,(a1)+
 			dbf		d0,.copy2
 
@@ -136,10 +138,10 @@ superCall:	move.l	$80.w,-(a7)
 			move.l	(a7)+,$80.w
 			rts
 
-	rsreset
-
 sCtxGfxLib:			dc.b	'graphics.library',0
 					even
+
+			rsreset
 
 m_ctxGfxBase:		rs.l	1
 m_ctxSsp:			rs.l	1
@@ -147,7 +149,7 @@ m_ctxOldView:		rs.l	1
 m_ctxOldCop1:		rs.l	1
 m_ctxOldCop2:		rs.l	1
 m_ctxOldVBR:		rs.l	1
-m_ctxVectors:		rs.b	($f0-$4)
+m_ctxVectors:		rs.b	(kVectorHighAddr-$4)
 m_ctxINTENA:		rs.w	1
 m_ctxDMA:			rs.w	1
 m_ctxADK:			rs.w	1
