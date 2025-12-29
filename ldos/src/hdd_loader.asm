@@ -9,9 +9,12 @@
 ;
 ;---------------------------------------------------------
 
+D_EMBED					=	0
+D_KICKSTART_RESTORE		=	1
+
 
 		macro	ADF_DISK_NAME
-			dc.b	"cycle-op.adf"
+			dc.b	"ldos_demo.adf"
 		endm
 
 _LVOOpenLib			=	-552
@@ -32,10 +35,24 @@ DISK1_SIZE			=	880*1024
 	
 start:
 
+;		dc.w $60fe
+
 			move.l	a7,pOriginalStack
 
 			lea		-m_sizeOf(a7),a7
 
+		if	D_KICKSTART_RESTORE
+			bsr		kickstartContextSave
+			move.l	#backFromLdos,m_kickstartBack(a7)
+		else
+			clr.l	m_kickstartBack(a7)
+		endif
+
+	if D_EMBED
+
+			move.l	#diskBuffer,m_hddBuffer1(a7)
+
+	else
 			move.l	$4.w,a6
 			lea		dosLibName(pc),a1
 			moveq	#36,d0		; check OS2.0++ 
@@ -67,7 +84,7 @@ start:
 			lea		diskBuffer,a1
 			move.l	a1,m_hddBuffer1(a7)
 			bsr		loadFile
-
+	endif
 			clr.l	m_hddBuffer2(a7)
 
 		; set the CHIP & ANY buffers addr, 64KiB aligned
@@ -86,13 +103,32 @@ start:
 			beq.s	.found
 			cmpa.l	a2,a3
 			bne.s	.search
+		if D_EMBED
+			moveq	#0,d0
+			rts
+		else
 			bra		exitProg		; ERROR: NOP not found in bootsector, probably means it's not LDOS ADF file
+		endif
 
 .found:		move.l	m_chipStart(a7),a1
 			add.l	#(512-64)*1024,a1
 			jmp		(a2)				; jump in the bootsector code
 
+		if	D_KICKSTART_RESTORE
+backFromLdos:
+			move.l	pOriginalStack(pc),a7
+			bsr		kickstartContextRestore
+
+		; back to kickstart
+			moveq	#0,d0
+			rts
+
+		endif
 		
+
+		if D_EMBED
+		else
+
 ; a0: file name
 ; a1: buffer
 ; d0: bytes to load
@@ -124,8 +160,7 @@ loadFile:
 			jsr		_LVOCloseFile(a6)
 
 			rts
-
-			
+		
 exitProg:
 
 		; close console
@@ -186,11 +221,20 @@ txtPressReturn:	dc.b	10,'Press RETURN key',0
 isOS2:			dc.b	0
 				even
 
-pOriginalStack:	ds.l	1	
 fsize:			ds.l	1			
 fileH:			ds.l	1
 pBuffer:		ds.l	1
 buffer			ds.b	8
+
+	endif
+
+		if	D_KICKSTART_RESTORE
+			include "context.asm"
+		endif
+
+
+
+pOriginalStack:	ds.l	1	
 
 	bss_c chip_ram
 
@@ -200,6 +244,16 @@ chipBuffer:		ds.b	(512+64)*1024
 
 anyBuffer:		ds.b	(512+64)*1024
 
+	if	D_EMBED
+
+		data
+
+diskBuffer:		incbin	"../../demo/ldos_demo.adf"
+
+	else
+
 	bss disk_buffer
 
 diskBuffer:		ds.b	DISK1_SIZE
+
+	endif

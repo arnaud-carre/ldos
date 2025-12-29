@@ -63,13 +63,13 @@ MEMPAGE_COUNT			=	MEMBANK_SIZE/MEMPAGE_SIZE
 
 
 	; temp struct to pass data between system & LDOS
-m_chipStart:	=	0
-m_chipSize:		=	4
-m_fakeStart:	=	8
-m_fakeSize:		=	12
-m_originalA1:	=	16
-m_buffer:		=	20
-m_hddBuffer1:	=	24
-m_hddBuffer2:	=	28
-m_entropyValue:	=	32
-m_sizeOf:		=	34
+m_chipStart	=	0
+m_chipSize		=	4
+m_fakeStart	=	8
+m_fakeSize		=	12
+m_originalA1	=	16
+m_kickstartBack =	20
+m_hddBuffer1	=	24
+m_hddBuffer2	=	28
+m_entropyValue	=	32
+m_sizeOf		=	34

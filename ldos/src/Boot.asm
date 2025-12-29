@@ -34,6 +34,7 @@ bootStart:
 start0:
 		lea		-m_sizeOf(a7),a7
 		move.l	a1,m_originalA1(a7)
+		clr.l	m_kickstartBack(a7)
 
 		move.l	#(MEMF_LARGEST|MEMF_CHIP),d1
 		jsr		_LVOAvailMem(a6)

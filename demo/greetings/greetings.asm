@@ -30,10 +30,10 @@ LINE_PITCH              =   SCREENW/8
 
 mainLoop:
          
+			cmpi.w	#(1248+320+16)/8,xWinPos
+			bne.s	mainLoop
 
-
-            bra.s   mainLoop
-
+			rts
             
 
 InterruptLevel3:

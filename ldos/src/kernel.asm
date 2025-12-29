@@ -34,6 +34,9 @@ entry:
 		lea		diskOffset+2(pc),a0
 		move.w	(a7)+,(a0)
 
+		lea		kickstartBackAddr(pc),a0
+		move.l	m_kickstartBack(a7),(a0)
+
 		tst.l	m_hddBuffer1(a7)		; if we're in HDD mode, no use to query fast ram
 		bne.s	.noFast
 
@@ -770,7 +773,11 @@ getFSInfos:
 			move.w	d1,m_secCount(a6)
 			rts
 
-.notf:		lsr.w	#4,d0
+.notf:		move.l	kickstartBackAddr(pc),d1
+			beq.s	.normal
+			move.l	d1,a0
+			jmp		(a0)
+.normal:	lsr.w	#4,d0
 			move.w	d0,-(a7)
 			movea.l	a7,a1
 			lea		.txt(pc),a0
@@ -1343,6 +1350,7 @@ copperListData:
 		dc.l	$01000200
 		dc.l	-2
 
+kickstartBackAddr:	dc.l	0
 persistentChipAd:	dc.l	0
 persistentChipSize:	dc.l	0
 persistentFakeAd:	dc.l	0
