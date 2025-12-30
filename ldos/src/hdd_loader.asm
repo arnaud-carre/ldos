@@ -31,7 +31,7 @@ DISK1_SIZE			=	880*1024
 		include "kernelPrivate.inc"
 
 		
-		code
+		code		; any RAM
 	
 start:
 
@@ -119,9 +119,15 @@ backFromLdos:
 			move.l	pOriginalStack(pc),a7
 			bsr		kickstartContextRestore
 
+		if D_EMBED
+
 		; back to kickstart
 			moveq	#0,d0
 			rts
+
+		else
+			bra	exitProg	
+		endif
 
 		endif
 		
@@ -236,23 +242,23 @@ buffer			ds.b	8
 
 pOriginalStack:	ds.l	1	
 
-	bss_c chip_ram
+	bss_c	; CHIP RAM
 
 chipBuffer:		ds.b	(512+64)*1024
 
-	bss any_ram
+	bss		; any RAM
 
 anyBuffer:		ds.b	(512+64)*1024
 
 	if	D_EMBED
 
-		data
+		data	; any RAM
 
 diskBuffer:		incbin	"../../demo/ldos_demo.adf"
 
 	else
 
-	bss disk_buffer
+	bss		; any RAM
 
 diskBuffer:		ds.b	DISK1_SIZE
 

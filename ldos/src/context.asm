@@ -28,8 +28,8 @@ kickstartContextSave:
 
 			move.l	d0,a6
 			move.l	34(a6),m_ctxOldView(a5)
-			sub.l	a1,a1
-			bsr		ctxDoView
+;			sub.l	a1,a1
+;			bsr		ctxDoView
 			move.l	$26(a6),m_ctxOldCop1(a5)
 			move.l	$32(a6),m_ctxOldCop2(a5)
 
